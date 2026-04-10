@@ -17,7 +17,8 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "test": "vitest run",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "smoke": "npm run build && node scripts/dogfood_smoke.mjs"
   },
   "keywords": [
     "mcp",
