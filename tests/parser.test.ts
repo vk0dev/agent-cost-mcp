@@ -31,6 +31,8 @@ describe('summarizeSessionLogs', () => {
     expect(summary.totals.tool_use_count).toBe(1);
     expect(summary.totals.tool_result_count).toBe(1);
     expect(summary.totals.linked_tool_result_count).toBe(1);
+    expect(summary.sessionPath).toContain('session-main.jsonl');
+    expect(summary.turns[1].toolUseCount).toBe(0);
     expect(summary.totals.estimated_cost_usd).toBeGreaterThan(0);
   });
 

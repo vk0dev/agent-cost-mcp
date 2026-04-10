@@ -22,6 +22,18 @@ Phase 1.1 exposes parser and pricing primitives that support the planned MCP too
 - `get_cost_trend` for historical cost rollups across sessions
 - `suggest_optimizations` for actionable cost-saving guidance
 
+## Cost estimation method
+
+Cost estimates are derived from per-turn token usage recorded in Claude Code JSONL session logs and multiplied by a pricing table in `src/pricing.ts`.
+
+- Input tokens use the model `inputPerMillion` rate
+- Output tokens use the model `outputPerMillion` rate
+- Cache reads use the discounted `cacheReadPerMillion` rate when defined
+- Cache creation tokens use `cacheCreationPerMillion` when defined
+- Unknown models fall back to the `default` pricing entry so summaries still render instead of failing
+
+This keeps the parser deterministic and local-first, but it also means estimates are only as accurate as the captured usage fields and the maintained pricing table. They are useful for relative cost visibility and regression tracking, not as a billing-source-of-truth.
+
 ## Limitations
 
 - Current implementation is fixture-backed and focused on Claude Code JSONL parsing
