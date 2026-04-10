@@ -1,5 +1,6 @@
 {
-  "name": "agent-cost-mcp",
+  "name": "@vk0/agent-cost-mcp",
+  "mcpName": "io.github.vk0dev/agent-cost-mcp",
   "version": "0.1.0",
   "description": "Parses Claude Code JSONL session logs to estimate token spend, summarize per-turn tool activity, and surface optimization opportunities for local agent workflows.",
   "author": {
