@@ -51,3 +51,12 @@ npm run build
 node dist/cli.js fixtures/session-main.jsonl
 node dist/cli.js fixtures/session-main.jsonl --subagent fixtures/session-subagent.jsonl
 ```
+
+## Run the MCP server
+
+```bash
+npm run build
+node dist/server.js
+```
+
+The server exposes four tools over stdio: `get_session_cost`, `get_tool_usage`, `get_cost_trend`, and `suggest_optimizations`.
