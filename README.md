@@ -43,3 +43,11 @@ This keeps the parser deterministic and local-first, but it also means estimates
 ## Development
 
 The current Phase 1.1 implementation validates parser behavior, tool-result linking, subagent aggregation, and pricing calculations with Vitest fixtures.
+
+## CLI smoke test
+
+```bash
+npm run build
+node dist/cli.js fixtures/session-main.jsonl
+node dist/cli.js fixtures/session-main.jsonl --subagent fixtures/session-subagent.jsonl
+```
