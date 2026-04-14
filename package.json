@@ -1,7 +1,7 @@
 {
   "name": "@vk0/agent-cost-mcp",
-  "version": "0.1.0",
-  "description": "Lightweight token and cost tracking for Claude Code agents. Parses session logs to surface per-tool spending and optimization hints.",
+  "version": "1.0.0",
+  "description": "Local-first Claude Code cost analyzer. Parses JSONL session logs to surface per-tool spend, daily trends, and optimization hints. Zero cloud, no API key.",
   "mcpName": "io.github.vk0dev/agent-cost-mcp",
   "type": "module",
   "main": "dist/index.js",
@@ -9,7 +9,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "bin": {
     "agent-cost-mcp": "./dist/cli.js"
@@ -23,16 +24,40 @@
   "keywords": [
     "mcp",
     "mcp-server",
+    "model-context-protocol",
+    "claude",
     "claude-code",
+    "anthropic",
     "ai-agent",
+    "llm-cost",
+    "token-usage",
     "cost-tracking",
-    "tokens"
+    "cost-analyzer",
+    "observability",
+    "agent-observability",
+    "opus",
+    "sonnet",
+    "jsonl",
+    "cost-optimization",
+    "developer-tools",
+    "local-first"
   ],
   "author": "vk0.dev",
   "license": "MIT",
+  "homepage": "https://vk0dev.github.io/agent-cost-mcp",
   "repository": {
     "type": "git",
     "url": "https://github.com/vk0dev/agent-cost-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vk0dev/agent-cost-mcp/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",

@@ -1,0 +1,18 @@
+{
+  "projectPath": "~/.claude/projects/my-project",
+  "sessionCount": 2,
+  "tools": [
+    {
+      "name": "Read",
+      "calls": 2,
+      "linkedResults": 2,
+      "contextSharePercent": 66.67
+    },
+    {
+      "name": "Grep",
+      "calls": 1,
+      "linkedResults": 0,
+      "contextSharePercent": 33.33
+    }
+  ]
+}

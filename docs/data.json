@@ -1,0 +1,93 @@
+{
+  "name": "agent-cost-mcp",
+  "fullName": "@vk0/agent-cost-mcp",
+  "mcpName": "io.github.vk0dev/agent-cost-mcp",
+  "version": "1.0.0",
+  "tagline": "Local-first Claude Code cost analyzer. Zero cloud. No API key.",
+  "description": "Local-first MCP server that parses Claude Code JSONL session logs to surface per-tool spend, daily trends, and optimization hints.",
+  "npm": "https://www.npmjs.com/package/@vk0/agent-cost-mcp",
+  "github": "https://github.com/vk0dev/agent-cost-mcp",
+  "homepage": "https://vk0dev.github.io/agent-cost-mcp",
+  "license": "MIT",
+  "category": "developer-tools",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "claude-code",
+    "anthropic",
+    "cost-tracking",
+    "llm-observability",
+    "local-first"
+  ],
+  "triggerPhrases": [
+    "How much did my last Claude Code session cost?",
+    "Which tools are eating my context window?",
+    "Why is Claude Code expensive this week?",
+    "Show me the cost trend for the last 7 days.",
+    "What should I disable to save tokens?",
+    "Are my cache reads actually saving me money?",
+    "Can I get a per-tool cost breakdown without Datadog?"
+  ],
+  "tools": [
+    {
+      "name": "get_session_cost",
+      "description": "Parse a single Claude Code session and return token totals (input, output, cache-read, cache-creation), turn count, and estimated USD cost."
+    },
+    {
+      "name": "get_tool_usage",
+      "description": "Aggregate tool invocations across one session or a filtered project log directory, reporting per-tool call counts and context-share percentages."
+    },
+    {
+      "name": "get_cost_trend",
+      "description": "Roll session logs into a day-by-day cost trend for a local project path, with per-day sessions, tokens, and estimated spend."
+    },
+    {
+      "name": "suggest_optimizations",
+      "description": "Generate lightweight optimization suggestions (cache-read ratios, abandoned tool calls, heaviest turns) from a parsed session log."
+    }
+  ],
+  "install": {
+    "claude-desktop": {
+      "configPath": {
+        "macos": "~/Library/Application Support/Claude/claude_desktop_config.json",
+        "windows": "%APPDATA%\\Claude\\claude_desktop_config.json"
+      },
+      "snippet": {
+        "mcpServers": {
+          "agent-cost": {
+            "command": "npx",
+            "args": ["-y", "@vk0/agent-cost-mcp"]
+          }
+        }
+      }
+    },
+    "claude-code": {
+      "command": "claude mcp add --transport stdio agent-cost -- npx -y @vk0/agent-cost-mcp",
+      "configPath": ".mcp.json (project) or ~/.claude/mcp.json (user)"
+    },
+    "cursor": {
+      "configPath": ".cursor/mcp.json",
+      "snippet": {
+        "mcpServers": {
+          "agent-cost": {
+            "command": "npx",
+            "args": ["-y", "@vk0/agent-cost-mcp"]
+          }
+        }
+      }
+    },
+    "cline": {
+      "configPath": "cline_mcp_settings.json (via Cline MCP Servers UI)",
+      "snippet": {
+        "mcpServers": {
+          "agent-cost": {
+            "command": "npx",
+            "args": ["-y", "@vk0/agent-cost-mcp"],
+            "disabled": false,
+            "alwaysAllow": []
+          }
+        }
+      }
+    }
+  }
+}

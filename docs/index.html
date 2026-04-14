@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>agent-cost-mcp · Local Claude Code cost analyzer</title>
+    <meta
+      name="description"
+      content="Local-first MCP server that parses Claude Code JSONL session logs to surface per-tool spend, daily trends, and optimization hints. Zero cloud. No API key."
+    />
+
+    <!-- Open Graph / social preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="agent-cost-mcp" />
+    <meta
+      property="og:description"
+      content="Local-first Claude Code cost analyzer. Parses JSONL session logs to surface per-tool spend, daily trends, and optimization hints. Zero cloud."
+    />
+    <meta property="og:url" content="https://vk0dev.github.io/agent-cost-mcp/" />
+    <meta property="og:image" content="./og-image.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="agent-cost-mcp" />
+    <meta
+      name="twitter:description"
+      content="Local-first Claude Code cost analyzer. Zero cloud, no API key."
+    />
+    <meta name="twitter:image" content="./og-image.png" />
+
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --bg-elevated: #141414;
+        --bg-code: #1a1a1a;
+        --border: #262626;
+        --text: #e5e5e5;
+        --text-muted: #8a8a8a;
+        --accent: #00e676;
+        --accent-dim: #00e67633;
+        --danger: #ff5c5c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono",
+          monospace;
+        font-size: 15px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .container {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 4rem 1.5rem 6rem;
+      }
+
+      /* Hero */
+      .hero {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 2.5rem;
+        margin-bottom: 3rem;
+      }
+      .hero .tag {
+        display: inline-block;
+        font-size: 0.75rem;
+        color: var(--accent);
+        border: 1px solid var(--accent-dim);
+        padding: 0.15rem 0.6rem;
+        border-radius: 999px;
+        margin-bottom: 1rem;
+      }
+      .hero h1 {
+        font-size: 2.4rem;
+        margin: 0 0 0.5rem;
+        letter-spacing: -0.02em;
+      }
+      .hero h1 .at {
+        color: var(--text-muted);
+      }
+      .hero .tagline {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        margin: 0 0 1.5rem;
+        max-width: 600px;
+      }
+      .hero .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+      }
+      .hero .badges img {
+        height: 20px;
+      }
+
+      .lang-switcher {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 1rem;
+      }
+      .lang-switcher a {
+        margin-right: 0.5rem;
+      }
+
+      /* Sections */
+      section {
+        margin: 3rem 0;
+      }
+      section h2 {
+        font-size: 1.5rem;
+        margin: 0 0 1rem;
+        letter-spacing: -0.01em;
+        border-left: 3px solid var(--accent);
+        padding-left: 0.75rem;
+      }
+      section p {
+        margin: 0.5rem 0 1rem;
+      }
+
+      /* Why list */
+      .why-list {
+        list-style: none;
+        padding: 0;
+        margin: 1rem 0 0;
+      }
+      .why-list li {
+        padding: 0.4rem 0 0.4rem 1.5rem;
+        position: relative;
+      }
+      .why-list li::before {
+        content: "▸";
+        position: absolute;
+        left: 0;
+        color: var(--accent);
+      }
+
+      /* Install tabs */
+      .tabs {
+        margin-top: 1.5rem;
+      }
+      .tab-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .tab-button {
+        background: transparent;
+        color: var(--text-muted);
+        border: none;
+        border-bottom: 2px solid transparent;
+        padding: 0.6rem 1.1rem;
+        font-family: inherit;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .tab-button:hover {
+        color: var(--text);
+      }
+      .tab-button.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+      .tab-panel {
+        display: none;
+        padding-top: 1rem;
+      }
+      .tab-panel.active {
+        display: block;
+      }
+      .tab-panel .file-path {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+      }
+
+      /* Code blocks */
+      pre {
+        background: var(--bg-code);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 1rem 1.2rem;
+        overflow-x: auto;
+        margin: 0.5rem 0;
+        font-size: 0.85rem;
+        line-height: 1.55;
+      }
+      code {
+        font-family: inherit;
+        font-size: 0.9em;
+      }
+      p code,
+      li code {
+        background: var(--bg-code);
+        border: 1px solid var(--border);
+        padding: 0.05rem 0.35rem;
+        border-radius: 3px;
+        font-size: 0.85em;
+      }
+
+      /* Tools grid */
+      .tools-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+        margin-top: 1rem;
+      }
+      @media (min-width: 640px) {
+        .tools-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .tool-card {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 1rem 1.1rem;
+      }
+      .tool-card h3 {
+        margin: 0 0 0.3rem;
+        font-size: 0.95rem;
+        color: var(--accent);
+      }
+      .tool-card p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+
+      /* Footer */
+      footer {
+        margin-top: 5rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+      footer a {
+        color: var(--text-muted);
+        text-decoration: underline;
+      }
+      footer a:hover {
+        color: var(--accent);
+      }
+
+      /* ASCII diagram */
+      .ascii-diagram {
+        white-space: pre;
+        font-size: 0.75rem;
+        line-height: 1.4;
+        color: var(--text-muted);
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header class="hero">
+        <span class="tag">v1.0 · MCP server</span>
+        <h1><span class="at">@vk0/</span>agent-cost-mcp</h1>
+        <p class="tagline">
+          Local-first Claude Code cost analyzer. Parses JSONL session logs to
+          surface per-tool spend, daily trends, and optimization hints.
+          <strong style="color: var(--text)">Zero cloud. No API key.</strong>
+        </p>
+        <div class="badges">
+          <a href="https://www.npmjs.com/package/@vk0/agent-cost-mcp"
+            ><img
+              src="https://img.shields.io/npm/v/@vk0/agent-cost-mcp.svg?style=flat-square"
+              alt="npm version"
+          /></a>
+          <a href="./LICENSE"
+            ><img
+              src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square"
+              alt="MIT"
+          /></a>
+          <a
+            href="https://github.com/vk0dev/agent-cost-mcp/actions/workflows/ci.yml"
+            ><img
+              src="https://img.shields.io/github/actions/workflow/status/vk0dev/agent-cost-mcp/ci.yml?branch=main&style=flat-square"
+              alt="CI"
+          /></a>
+          <a href="https://nodejs.org"
+            ><img
+              src="https://img.shields.io/badge/node-%E2%89%A518-339933.svg?style=flat-square"
+              alt="Node ≥18"
+          /></a>
+        </div>
+        <div class="lang-switcher">
+          Languages:
+          <a href="https://github.com/vk0dev/agent-cost-mcp/blob/main/README.md"
+            >English</a
+          >
+          ·
+          <a
+            href="https://github.com/vk0dev/agent-cost-mcp/blob/main/README.ja.md"
+            >日本語</a
+          >
+          ·
+          <a
+            href="https://github.com/vk0dev/agent-cost-mcp/blob/main/README.zh-CN.md"
+            >简体中文</a
+          >
+          ·
+          <a
+            href="https://github.com/vk0dev/agent-cost-mcp/blob/main/README.ru.md"
+            >Русский</a
+          >
+          ·
+          <a
+            href="https://github.com/vk0dev/agent-cost-mcp/blob/main/README.es.md"
+            >Español</a
+          >
+        </div>
+      </header>
+
+      <section>
+        <h2>When to install</h2>
+        <p style="color: var(--text-muted)">
+          Use this MCP server when the user asks any of:
+        </p>
+        <ul class="why-list">
+          <li>"How much did my last Claude Code session cost?"</li>
+          <li>"Which tools are eating my context window?"</li>
+          <li>"Why is Claude Code expensive this week?"</li>
+          <li>"Show me the cost trend for the last 7 days."</li>
+          <li>"What should I disable to save tokens?"</li>
+          <li>"Are my cache reads actually saving me money?"</li>
+          <li>
+            "Can I get a per-tool cost breakdown without signing up for
+            Datadog?"
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Install</h2>
+        <p style="color: var(--text-muted)">
+          Pick your client. Everything runs through <code>npx</code> — nothing
+          to install globally.
+        </p>
+        <div class="tabs">
+          <div class="tab-buttons" role="tablist">
+            <button
+              class="tab-button active"
+              data-tab="claude-desktop"
+              role="tab"
+            >
+              Claude Desktop
+            </button>
+            <button class="tab-button" data-tab="claude-code" role="tab">
+              Claude Code
+            </button>
+            <button class="tab-button" data-tab="cursor" role="tab">
+              Cursor
+            </button>
+            <button class="tab-button" data-tab="cline" role="tab">
+              Cline
+            </button>
+          </div>
+
+          <div class="tab-panel active" id="claude-desktop">
+            <div class="file-path">
+              ~/Library/Application Support/Claude/claude_desktop_config.json
+              <span style="opacity: 0.5">(macOS)</span>
+            </div>
+            <pre><code>{
+  "mcpServers": {
+    "agent-cost": {
+      "command": "npx",
+      "args": ["-y", "@vk0/agent-cost-mcp"]
+    }
+  }
+}</code></pre>
+          </div>
+
+          <div class="tab-panel" id="claude-code">
+            <div class="file-path">One-liner via CLI</div>
+            <pre><code>claude mcp add --transport stdio agent-cost -- npx -y @vk0/agent-cost-mcp</code></pre>
+          </div>
+
+          <div class="tab-panel" id="cursor">
+            <div class="file-path">.cursor/mcp.json in your project root</div>
+            <pre><code>{
+  "mcpServers": {
+    "agent-cost": {
+      "command": "npx",
+      "args": ["-y", "@vk0/agent-cost-mcp"]
+    }
+  }
+}</code></pre>
+          </div>
+
+          <div class="tab-panel" id="cline">
+            <div class="file-path">
+              Cline MCP settings (MCP Servers icon → Configure)
+            </div>
+            <pre><code>{
+  "mcpServers": {
+    "agent-cost": {
+      "command": "npx",
+      "args": ["-y", "@vk0/agent-cost-mcp"],
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Tools</h2>
+        <div class="tools-grid">
+          <div class="tool-card">
+            <h3>get_session_cost</h3>
+            <p>
+              Parse a single Claude Code session and return token totals, turn
+              count, and estimated USD cost.
+            </p>
+          </div>
+          <div class="tool-card">
+            <h3>get_tool_usage</h3>
+            <p>
+              Aggregate tool invocations across a session or project log
+              directory with per-tool context-share percentages.
+            </p>
+          </div>
+          <div class="tool-card">
+            <h3>get_cost_trend</h3>
+            <p>
+              Roll session logs into a day-by-day cost trend for a local
+              project path.
+            </p>
+          </div>
+          <div class="tool-card">
+            <h3>suggest_optimizations</h3>
+            <p>
+              Generate lightweight optimization suggestions — cache ratios,
+              abandoned calls, heaviest turns.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>How it works</h2>
+        <pre class="ascii-diagram">
+  ~/.claude/projects/*.jsonl           ┌─────────────────┐
+  (Claude Code session logs)  ──────▶  │  JSONL parser   │
+                                       │  + pricing.ts   │
+                                       └────────┬────────┘
+                                                │
+                                                ▼
+                                       ┌─────────────────┐
+  Agent tool call (stdio MCP)  ──────▶ │  MCP server     │ ─── JSON response
+                                       │  (4 tools)      │
+                                       └─────────────────┘
+        </pre>
+        <p style="color: var(--text-muted); font-size: 0.9rem">
+          Read-only on your local filesystem. No telemetry, no API key, no
+          cloud sync. Delete the package and nothing remains.
+        </p>
+      </section>
+
+      <section>
+        <h2>Next</h2>
+        <p>
+          →
+          <a href="https://github.com/vk0dev/agent-cost-mcp"
+            >Full README &amp; source on GitHub</a
+          >
+        </p>
+        <p>
+          →
+          <a href="https://www.npmjs.com/package/@vk0/agent-cost-mcp"
+            >npm package</a
+          >
+        </p>
+        <p>
+          →
+          <a
+            href="https://github.com/vk0dev/agent-cost-mcp/blob/main/CHANGELOG.md"
+            >Changelog</a
+          >
+        </p>
+        <p>
+          →
+          <a href="https://github.com/vk0dev/agent-cost-mcp/issues"
+            >Report an issue</a
+          >
+        </p>
+      </section>
+
+      <footer>
+        <p>
+          <a href="https://github.com/vk0dev/agent-cost-mcp">github.com/vk0dev/agent-cost-mcp</a>
+          · MIT License · Built by
+          <a href="https://github.com/vk0dev">vk0.dev</a>
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      // Minimal tab switching
+      const buttons = document.querySelectorAll(".tab-button");
+      const panels = document.querySelectorAll(".tab-panel");
+      buttons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const target = btn.getAttribute("data-tab");
+          buttons.forEach((b) => b.classList.remove("active"));
+          panels.forEach((p) => p.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById(target).classList.add("active");
+        });
+      });
+    </script>
+  </body>
+</html>

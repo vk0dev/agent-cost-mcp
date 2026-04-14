@@ -1,0 +1,15 @@
+{
+  "sessionPath": "~/.claude/projects/my-project/session-main.jsonl",
+  "subagentPaths": [],
+  "turnCount": 2,
+  "totals": {
+    "input_tokens": 2000,
+    "output_tokens": 500,
+    "cache_read_input_tokens": 100,
+    "cache_creation_input_tokens": 50,
+    "tool_use_count": 1,
+    "tool_result_count": 1,
+    "linked_tool_result_count": 1,
+    "estimated_cost_usd": 0.013718
+  }
+}

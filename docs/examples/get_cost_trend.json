@@ -1,0 +1,15 @@
+{
+  "projectPath": "~/.claude/projects/my-project",
+  "days": 7,
+  "totalCostUsd": 0.027443,
+  "totalSessions": 2,
+  "daily": [
+    {
+      "date": "2026-04-10",
+      "sessions": 2,
+      "costUsd": 0.027443,
+      "inputTokens": 2400,
+      "outputTokens": 600
+    }
+  ]
+}

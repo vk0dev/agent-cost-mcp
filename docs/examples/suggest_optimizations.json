@@ -1,0 +1,11 @@
+{
+  "sessionPath": "~/.claude/projects/my-project/session-main.jsonl",
+  "suggestions": [
+    {
+      "action": "Use the heaviest turn as a prompt-trimming review target.",
+      "reason": "Turn 1 is the densest token consumer in this session.",
+      "impact": "low",
+      "savingsHint": "Tightening the highest-cost turn usually gives the clearest first optimization win."
+    }
+  ]
+}

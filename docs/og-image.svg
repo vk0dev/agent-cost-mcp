@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0a"/>
+      <stop offset="100%" style="stop-color:#111111"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bg-grad)"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.04" stroke="#ffffff" stroke-width="0.5">
+    <line x1="0" y1="80" x2="1280" y2="80"/>
+    <line x1="0" y1="160" x2="1280" y2="160"/>
+    <line x1="0" y1="240" x2="1280" y2="240"/>
+    <line x1="0" y1="320" x2="1280" y2="320"/>
+    <line x1="0" y1="400" x2="1280" y2="400"/>
+    <line x1="0" y1="480" x2="1280" y2="480"/>
+    <line x1="0" y1="560" x2="1280" y2="560"/>
+    <line x1="160" y1="0" x2="160" y2="640"/>
+    <line x1="320" y1="0" x2="320" y2="640"/>
+    <line x1="480" y1="0" x2="480" y2="640"/>
+    <line x1="640" y1="0" x2="640" y2="640"/>
+    <line x1="800" y1="0" x2="800" y2="640"/>
+    <line x1="960" y1="0" x2="960" y2="640"/>
+    <line x1="1120" y1="0" x2="1120" y2="640"/>
+  </g>
+
+  <!-- Accent glow -->
+  <ellipse cx="640" cy="280" rx="400" ry="200" fill="#00e676" opacity="0.03"/>
+
+  <!-- Dollar sign icon -->
+  <g transform="translate(100, 180)">
+    <rect width="80" height="80" rx="16" fill="#00e676" opacity="0.12"/>
+    <text x="40" y="56" text-anchor="middle" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="48" font-weight="700" fill="#00e676">$</text>
+  </g>
+
+  <!-- Title -->
+  <text x="200" y="240" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="56" font-weight="700" fill="#e5e5e5" letter-spacing="-1">agent-cost-mcp</text>
+
+  <!-- Subtitle -->
+  <text x="100" y="310" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="22" fill="#8a8a8a">Local-first Claude Code cost analyzer</text>
+
+  <!-- Tagline chips -->
+  <g transform="translate(100, 340)">
+    <rect x="0" y="0" width="130" height="32" rx="16" fill="#00e676" opacity="0.12"/>
+    <text x="65" y="21" text-anchor="middle" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="13" fill="#00e676">Zero cloud</text>
+
+    <rect x="145" y="0" width="160" height="32" rx="16" fill="#00e676" opacity="0.12"/>
+    <text x="225" y="21" text-anchor="middle" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="13" fill="#00e676">Parses JSONL</text>
+
+    <rect x="320" y="0" width="145" height="32" rx="16" fill="#00e676" opacity="0.12"/>
+    <text x="392" y="21" text-anchor="middle" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="13" fill="#00e676">No API key</text>
+
+    <rect x="480" y="0" width="155" height="32" rx="16" fill="#00e676" opacity="0.12"/>
+    <text x="557" y="21" text-anchor="middle" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="13" fill="#00e676">4 MCP tools</text>
+  </g>
+
+  <!-- ASCII diagram (right side) -->
+  <g transform="translate(780, 140)" opacity="0.35">
+    <text font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="12" fill="#8a8a8a">
+      <tspan x="0" dy="0">~/.claude/*.jsonl</tspan>
+      <tspan x="0" dy="20">        │</tspan>
+      <tspan x="0" dy="20">        ▼</tspan>
+      <tspan x="0" dy="20">┌───────────────┐</tspan>
+      <tspan x="0" dy="20">│ JSONL parser  │</tspan>
+      <tspan x="0" dy="20">│ + pricing.ts  │</tspan>
+      <tspan x="0" dy="20">└───────┬───────┘</tspan>
+      <tspan x="0" dy="20">        │</tspan>
+      <tspan x="0" dy="20">        ▼</tspan>
+      <tspan x="0" dy="20">┌───────────────┐</tspan>
+      <tspan x="0" dy="20">│  MCP server   │</tspan>
+      <tspan x="0" dy="20">│  (4 tools)    │</tspan>
+      <tspan x="0" dy="20">└───────────────┘</tspan>
+    </text>
+  </g>
+
+  <!-- Install one-liner at bottom -->
+  <g transform="translate(100, 440)">
+    <rect x="0" y="0" width="700" height="44" rx="8" fill="#1a1a1a" stroke="#262626" stroke-width="1"/>
+    <text x="16" y="28" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="15" fill="#8a8a8a">$</text>
+    <text x="36" y="28" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="15" fill="#e5e5e5"> npx -y @vk0/agent-cost-mcp</text>
+  </g>
+
+  <!-- Bottom bar -->
+  <rect x="0" y="520" width="1280" height="1" fill="#262626"/>
+
+  <!-- Footer -->
+  <text x="100" y="570" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="14" fill="#555555">npm: @vk0/agent-cost-mcp</text>
+  <text x="100" y="595" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="14" fill="#555555">github.com/vk0dev/agent-cost-mcp</text>
+
+  <!-- v1.0 badge -->
+  <g transform="translate(1100, 555)">
+    <rect x="0" y="0" width="80" height="30" rx="6" fill="#00e676" opacity="0.15"/>
+    <text x="40" y="20" text-anchor="middle" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="14" font-weight="700" fill="#00e676">v1.0.0</text>
+  </g>
+
+  <!-- MIT badge -->
+  <g transform="translate(1000, 555)">
+    <rect x="0" y="0" width="80" height="30" rx="6" fill="#3b82f6" opacity="0.15"/>
+    <text x="40" y="20" text-anchor="middle" font-family="JetBrains Mono, SF Mono, Menlo, Consolas, monospace" font-size="14" font-weight="600" fill="#3b82f6">MIT</text>
+  </g>
+</svg>
