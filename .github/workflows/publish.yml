@@ -53,3 +53,19 @@ jobs:
             ```
 
             See [CHANGELOG.md](./CHANGELOG.md) for details.
+
+      - name: Publish to Official MCP Registry
+        run: |
+          npx -y @anthropic-ai/mcp-publisher@latest publish || \
+          echo "::warning::MCP Registry publish failed — may need manual 'mcp-publisher publish'"
+        env:
+          MCP_REGISTRY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish to Smithery
+        run: |
+          npx -y @smithery/cli@latest mcp publish --name "${{ vars.SMITHERY_SERVER_NAME || 'unfucker/agent-cost-mcp' }}" || \
+          echo "::warning::Smithery publish failed — may need manual publish"
+        env:
+          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
+        continue-on-error: true

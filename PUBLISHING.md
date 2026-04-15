@@ -35,16 +35,10 @@ git push origin main --follow-tags
 | **Glama.ai** | Auto-scraping npm by keyword `mcp-server` | 24-48h |
 | **MseeP / MCPServers.org** | Auto-scraping npm | 24-48h |
 | **PulseMCP** | Auto-ingests from Official MCP Registry | 1-7 days |
+| **Official MCP Registry** | CI `publish.yml` step (after npm publish) | ~1 min |
+| **Smithery** | CI `publish.yml` step (after npm publish) | ~1 min |
 
-### What you run manually after npm publish
-
-```bash
-# Smithery (API key in Bitwarden as "Smithery API Key")
-SMITHERY_API_KEY="<key>" npx @smithery/cli@latest mcp publish
-
-# Official MCP Registry
-mcp-publisher publish
-```
+All 9 platforms update automatically on `git push --follow-tags`. No manual steps needed.
 
 mcp.so and Awesome MCP Servers do not need updates per release.
 
