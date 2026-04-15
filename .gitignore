@@ -2,3 +2,4 @@ node_modules/
 dist/
 .smithery/
 .DS_Store
+.mcpregistry_*
