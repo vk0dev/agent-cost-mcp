@@ -5,6 +5,17 @@ All notable changes to `@vk0/agent-cost-mcp` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — 2026-04-15
+
+### Added
+
+- `createServer()` and `createSandboxServer()` exports from `src/createServer.ts` for programmatic use and Smithery compatibility.
+- `PUBLISHING.md` — marketplace publishing playbook for any agent (not just Claude Code).
+
+### Changed
+
+- Refactored `src/server.ts` to use `createServer()` factory instead of inline construction. No behavior change for CLI/stdio users.
+
 ## [1.0.0] — 2026-04-11
 
 First public release. Public API frozen — semver from here on.
