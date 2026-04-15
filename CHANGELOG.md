@@ -5,6 +5,19 @@ All notable changes to `@vk0/agent-cost-mcp` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] — 2026-04-15
+
+### Added
+
+- Comparison table vs alternatives (API Dashboard, manual grep/jq) in all 5 README languages.
+- Dependabot ignore rules for major version bumps (TypeScript 6, Vitest 4).
+- `.mcpregistry_*` added to `.gitignore` for token file safety.
+
+### Changed
+
+- CI actions bumped: checkout v6, configure-pages v6, deploy-pages v5, upload-pages-artifact v5, gh-release v3.
+- Dependencies bumped: @types/node 25.6.0, zod 4.3.6.
+
 ## [1.0.1] — 2026-04-15
 
 ### Added

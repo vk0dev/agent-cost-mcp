@@ -5,7 +5,7 @@ import { registerTools } from './tools/index.js';
 export function createServer(): McpServer {
   const server = new McpServer({
     name: 'agent-cost-mcp',
-    version: '1.0.1',
+    version: '1.0.2',
   });
   registerTools(server);
   return server;
