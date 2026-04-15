@@ -249,19 +249,24 @@ Agent: [calls suggest_optimizations]
 
 ## Comparison vs alternatives
 
-| Feature | `@vk0/agent-cost-mcp` | Claude Code `/cost` | Datadog LLM | New Relic AI | OpenLLMetry |
-|---------|:---------------------:|:-------------------:|:-----------:|:------------:|:-----------:|
-| Price | Free | Free | $100+/mo | $99+/mo | Free (self-host) |
-| Local-first | ✅ | ✅ | ❌ | ❌ | ⚠️ optional |
-| Per-session detail | ✅ | ❌ (summary only) | ✅ | ✅ | ✅ |
-| Per-tool breakdown | ✅ | ❌ | ⚠️ custom | ⚠️ custom | ✅ |
-| Cache-read awareness | ✅ | ✅ | ⚠️ partial | ⚠️ partial | ❌ |
-| Optimization hints | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Setup effort | 1-line `npx` | built-in | days (agent + dashboard) | days | hours |
-| Works offline | ✅ | ✅ | ❌ | ❌ | ⚠️ |
-| Agent-callable (MCP) | ✅ | — | ❌ | ❌ | ❌ |
+| Feature | `@vk0/agent-cost-mcp` | API Dashboard | Manual `grep`/`jq` |
+|---------|:---------------------:|:-------------:|:-------------------:|
+| MCP integration (agent calls directly) | ✅ | ❌ | ❌ |
+| Per-tool cost breakdown | ✅ | ❌ | ⚠️ DIY scripting |
+| Daily cost trends | ✅ | ✅ (account-level) | ⚠️ manual aggregation |
+| Optimization suggestions | ✅ | ❌ | ❌ |
+| Session-level granularity | ✅ | ❌ (account totals) | ✅ (if you know the format) |
+| Local-first / zero cloud | ✅ | ❌ (web only) | ✅ |
+| Works offline | ✅ | ❌ | ✅ |
+| No API key required | ✅ | ❌ (requires login) | ✅ |
+| Setup effort | 1-line `npx` | browser login | knowledge of JSONL schema |
+| Repeatable without manual effort | ✅ | ✅ | ❌ (re-run each time) |
 
-**Best fit:** solo devs and small teams who want fine-grained cost visibility without vendor lock-in, dashboards, or a billing relationship. If you need multi-user governance and SLA alerting, pick an enterprise APM. If you just want to know *where your tokens went last Tuesday*, install this.
+**API Dashboard** ([console.anthropic.com](https://console.anthropic.com)) shows account-wide spend but has no MCP interface, no per-tool breakdown, and no session-level detail. Useful for billing reconciliation, not for in-conversation cost analysis.
+
+**Manual log parsing** (`grep`/`jq` on `~/.claude/projects/**/*.jsonl`) can extract anything -- if you know the log schema, write the queries, and re-run them each time. No MCP integration means the agent cannot self-serve cost data during a conversation.
+
+**Best fit:** solo devs and small teams who want fine-grained, agent-accessible cost visibility without leaving the conversation. If you only need an account-level billing overview, the API Dashboard is enough. If you want the agent to answer "where did my tokens go?" on its own, install this.
 
 ## FAQ
 

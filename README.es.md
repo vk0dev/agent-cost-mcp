@@ -247,19 +247,24 @@ Agente: [llama a suggest_optimizations]
 
 ## Comparación con alternativas
 
-| Característica | `@vk0/agent-cost-mcp` | Claude Code `/cost` | Datadog LLM | New Relic AI | OpenLLMetry |
-|----------------|:---------------------:|:-------------------:|:-----------:|:------------:|:-----------:|
-| Precio | Gratis | Gratis | $100+/mes | $99+/mes | Gratis (self-host) |
-| Local-first | ✅ | ✅ | ❌ | ❌ | ⚠️ opcional |
-| Detalle por sesión | ✅ | ❌ (solo resumen) | ✅ | ✅ | ✅ |
-| Desglose por herramienta | ✅ | ❌ | ⚠️ custom | ⚠️ custom | ✅ |
-| Conciencia de cache-reads | ✅ | ✅ | ⚠️ parcial | ⚠️ parcial | ❌ |
-| Sugerencias de optimización | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Esfuerzo de setup | 1 línea `npx` | integrado | días | días | horas |
-| Funciona offline | ✅ | ✅ | ❌ | ❌ | ⚠️ |
-| Invocable por agente (MCP) | ✅ | — | ❌ | ❌ | ❌ |
+| Característica | `@vk0/agent-cost-mcp` | API Dashboard | `grep`/`jq` manual |
+|----------------|:---------------------:|:-------------:|:-------------------:|
+| Integración MCP (el agente llama directamente) | ✅ | ❌ | ❌ |
+| Desglose de coste por herramienta | ✅ | ❌ | ⚠️ scripting propio |
+| Tendencia diaria de costes | ✅ | ✅ (nivel de cuenta) | ⚠️ agregación manual |
+| Sugerencias de optimización | ✅ | ❌ | ❌ |
+| Granularidad a nivel de sesión | ✅ | ❌ (totales de cuenta) | ✅ (si conoces el formato) |
+| Local-first / sin nube | ✅ | ❌ (solo web) | ✅ |
+| Funciona offline | ✅ | ❌ | ✅ |
+| Sin clave de API | ✅ | ❌ (requiere login) | ✅ |
+| Esfuerzo de setup | 1 línea `npx` | login en navegador | conocimiento del esquema JSONL |
+| Repetible sin esfuerzo manual | ✅ | ✅ | ❌ (re-ejecutar cada vez) |
 
-**Para quién:** desarrolladores solos y equipos pequeños que quieren visibilidad detallada de costes sin vendor lock-in, dashboards o una relación de facturación. Si necesitas gobernanza multi-usuario y alertas SLA, elige un APM empresarial. Si solo quieres saber *a dónde se fueron los tokens el martes*, instala esto.
+**API Dashboard** ([console.anthropic.com](https://console.anthropic.com)) muestra el gasto a nivel de cuenta, pero no tiene interfaz MCP, ni desglose por herramienta, ni detalle por sesión. Útil para conciliación de facturación, no para análisis de costes dentro de una conversación.
+
+**Parseo manual de logs** (`grep`/`jq` sobre `~/.claude/projects/**/*.jsonl`) puede extraer cualquier cosa, si conoces el esquema de logs, escribes las consultas y las re-ejecutas cada vez. Sin integración MCP, el agente no puede obtener datos de coste por su cuenta durante una conversación.
+
+**Para quién:** desarrolladores solos y equipos pequeños que quieren visibilidad de costes detallada y accesible por el agente sin salir de la conversación. Si solo necesitas una vista general de facturación a nivel de cuenta, el API Dashboard es suficiente. Si quieres que el agente responda "¿a dónde fueron mis tokens?" por sí solo, instala esto.
 
 ## FAQ
 
