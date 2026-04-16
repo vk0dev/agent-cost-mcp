@@ -1,32 +1,55 @@
-# agent-cost-mcp v1.0.0
+# agent-cost-mcp v1.0.3 draft
 
-**Local-first Claude Code cost analyzer.** Zero cloud. No API key.
+**Release type:** patch, publish-infra refresh only.
 
-## Highlights
+## Summary
 
-- **4 MCP tools** for cost visibility: `get_session_cost`, `get_tool_usage`, `get_cost_trend`, `suggest_optimizations`
-- **1-line install** via `npx` — works with Claude Desktop, Claude Code, Cursor, and Cline
-- **Local-first by design** — parses JSONL session logs from `~/.claude/projects/`, zero network egress
-- **Per-tool breakdown** — see which tools eat your context window
-- **Daily cost trends** — watch spend move over time
-- **Optimization hints** — cache-read ratios, abandoned tool calls, heaviest turns
-- **Config-driven pricing** — editable TypeScript pricing table for `claude-sonnet-4` and `claude-opus-4`
+This draft covers the current unreleased HEAD after `v1.0.2`.
 
-## Quick start
+- Current HEAD: `5212d44`
+- Last published npm version: `1.0.2`
+- Recommended next version if a new npm release is desired: `1.0.3`
+
+## What changed since v1.0.2
+
+- Fixed the publish workflow to call the real `mcp-publisher` binary instead of a nonexistent npm command.
+- No user-facing MCP tool behavior changed.
+- No packaged runtime files changed relative to `v1.0.2`; the delta is release automation only.
+
+## Release positioning
+
+This is a maintenance patch for release reliability.
+
+Suggested one-line changelog summary:
+
+> fix(ci): use the real MCP publisher binary in release automation
+
+## GO-time commands
+
+Run only after explicit publish GO:
 
 ```bash
-claude mcp add --transport stdio agent-cost -- npx -y @vk0/agent-cost-mcp
+npm version patch
+npm install
+npm test
+npm run lint
+npm run build
+npm run smoke
+npm pack --json
+npm publish --provenance --access public
+git push --follow-tags
 ```
 
-Then ask: *"How much did my last session cost?"*
+## Pre-publish checks to re-run at GO time
 
-## Install guides
+- `npm test`
+- `npm run lint`
+- `npm run build`
+- `npm run smoke`
+- `npm pack --json`
+- `npm view @vk0/agent-cost-mcp version dist-tags --json`
 
-See [README](https://github.com/vk0dev/agent-cost-mcp#install) for Claude Desktop, Claude Code, Cursor, and Cline snippets.
+## Notes
 
-## Links
-
-- [npm package](https://www.npmjs.com/package/@vk0/agent-cost-mcp)
-- [Landing page](https://vk0dev.github.io/agent-cost-mcp)
-- [CHANGELOG](https://github.com/vk0dev/agent-cost-mcp/blob/main/CHANGELOG.md)
-- README in: [English](https://github.com/vk0dev/agent-cost-mcp/blob/main/README.md) · [日本語](https://github.com/vk0dev/agent-cost-mcp/blob/main/README.ja.md) · [简体中文](https://github.com/vk0dev/agent-cost-mcp/blob/main/README.zh-CN.md) · [Русский](https://github.com/vk0dev/agent-cost-mcp/blob/main/README.ru.md) · [Español](https://github.com/vk0dev/agent-cost-mcp/blob/main/README.es.md)
+- If you do **not** want to ship an infra-only patch, keep npm at `1.0.2` and wait for the next user-facing change.
+- If you do want HEAD traceability on npm, publish as `v1.0.3` so the registry matches the current Git state.
