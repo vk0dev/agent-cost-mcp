@@ -1,4 +1,13 @@
-# Changelog
+
+## [1.0.4] — 2026-04-22
+
+### Added
+- Live watch mode in CLI summary for continuous session cost visibility (`feat(cli): add live watch mode`)
+
+### Changed
+- Sharpened README positioning around cost optimization vs generic spend tracking
+- README heading `Install` → `Installation` for consistency
+
 
 All notable changes to `@vk0/agent-cost-mcp` are documented in this file.
 
