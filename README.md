@@ -32,7 +32,7 @@ This is **not** a billing dashboard, procurement console, or team finance tool.
 
 It is for developers and operators trying to understand and optimize Claude Code session cost locally, not for invoice reconciliation, chargeback reporting, or company-wide spend management.
 
-## Install
+## Installation
 
 Pick your client. Every option uses `npx` so there is nothing to install globally.
 

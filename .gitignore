@@ -3,3 +3,6 @@ dist/
 .smithery/
 .DS_Store
 .mcpregistry_*
+
+# npm pack artifacts
+*.tgz
