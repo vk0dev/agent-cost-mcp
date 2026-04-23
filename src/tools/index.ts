@@ -250,7 +250,7 @@ export function getToolUsage(input: z.infer<typeof toolUsageRequestSchema>): Too
   });
 }
 
-export async function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Promise<CostTrendResult> {
+export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): CostTrendResult {
   const files = collectJsonlFiles(input.projectPath);
   const now = Date.now();
   const dailyMap = new Map<string, { sessions: number; costUsd: number; inputTokens: number; outputTokens: number }>();
@@ -391,7 +391,7 @@ export function registerTools(server: McpServer): void {
       inputSchema: costTrendRequestSchema.shape,
       outputSchema: trendOutputSchema.shape,
     },
-    async (input) => makeToolResponse(await getCostTrend(costTrendRequestSchema.parse(input))),
+    async (input) => makeToolResponse(getCostTrend(costTrendRequestSchema.parse(input))),
   );
 
   server.registerTool(
