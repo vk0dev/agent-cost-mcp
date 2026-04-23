@@ -47,6 +47,21 @@ describe('pricing config', () => {
     expect(String(warn.mock.calls[0]?.[0] ?? '')).toContain('claude-sonnet-4.4');
   });
 
+  it('keeps config-driven cache read and cache creation pricing intact', () => {
+    const cost = estimateCostUsd(
+      'claude-sonnet-4.5',
+      {
+        input_tokens: 1_000_000,
+        output_tokens: 1_000_000,
+        cache_read_input_tokens: 1_000_000,
+        cache_creation_input_tokens: 1_000_000,
+      },
+      DEFAULT_PRICING_TABLE,
+    );
+
+    expect(cost).toBe(22.05);
+  });
+
   it('falls back to default pricing when no family match exists', () => {
     const warn = vi.fn();
     const unknown = estimateCostUsd('mystery-model-99', usage, DEFAULT_PRICING_TABLE, warn);

@@ -17,13 +17,13 @@ function assertPricing(value: unknown, source: string): Pricing {
   }
   const obj = value as Record<string, unknown>;
   const pricing: Pricing = {
-    input_per_million: Number(obj.input_per_million ?? 0),
-    output_per_million: Number(obj.output_per_million ?? 0),
-    cache_read_per_million: Number(obj.cache_read_per_million ?? 0),
-    cache_write_per_million: Number(obj.cache_write_per_million ?? 0),
+    inputPerMillion: Number(obj.input_per_million ?? 0),
+    outputPerMillion: Number(obj.output_per_million ?? 0),
+    cacheReadPerMillion: Number(obj.cache_read_per_million ?? 0),
+    cacheCreationPerMillion: Number(obj.cache_write_per_million ?? 0),
   };
   for (const [key, val] of Object.entries(pricing)) {
-    if (!Number.isFinite(val) || val < 0) {
+    if (val !== undefined && (!Number.isFinite(val) || val < 0)) {
       throw new Error(`Invalid pricing field ${key} in ${source}`);
     }
   }
@@ -105,10 +105,10 @@ export function estimateCostUsd(
     warn(`Unknown model '${model}', using pricing from '${resolvedModel}'.`);
   }
 
-  const inputCost = (usage.input_tokens / 1_000_000) * pricing.input_per_million;
-  const outputCost = (usage.output_tokens / 1_000_000) * pricing.output_per_million;
-  const cacheReadCost = ((usage.cache_read_input_tokens ?? 0) / 1_000_000) * pricing.cache_read_per_million;
-  const cacheWriteCost = ((usage.cache_creation_input_tokens ?? 0) / 1_000_000) * pricing.cache_write_per_million;
+  const inputCost = (usage.input_tokens / 1_000_000) * pricing.inputPerMillion;
+  const outputCost = (usage.output_tokens / 1_000_000) * pricing.outputPerMillion;
+  const cacheReadCost = ((usage.cache_read_input_tokens ?? 0) / 1_000_000) * (pricing.cacheReadPerMillion ?? 0);
+  const cacheWriteCost = ((usage.cache_creation_input_tokens ?? 0) / 1_000_000) * (pricing.cacheCreationPerMillion ?? 0);
 
   return Number((inputCost + outputCost + cacheReadCost + cacheWriteCost).toFixed(6));
 }
