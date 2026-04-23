@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { readBudgetState, type BudgetState } from './budget.js';
 import { summarizeSessionLogs } from './parser.js';
 
 export type CliOptions = {
@@ -25,10 +26,6 @@ export type WatchModeOptions = {
   print?: (text: string) => void;
   createWatcher?: (path: string, onChange: () => void) => { close(): void };
   waitForExit?: () => Promise<void>;
-};
-
-type BudgetState = {
-  daily_usd?: number;
 };
 
 function printHelp(): void {
@@ -121,16 +118,6 @@ function renderSummary(summary: unknown, watch = false): string {
   }
   return `${new Date().toISOString()}
 ${body}`;
-}
-
-function readBudgetState(): BudgetState | null {
-  const statePath = path.join(os.homedir(), '.agent-cost-mcp', 'budget-state.json');
-  if (!existsSync(statePath)) return null;
-  try {
-    return JSON.parse(readFileSync(statePath, 'utf8')) as BudgetState;
-  } catch {
-    return null;
-  }
 }
 
 export function renderStatusline(

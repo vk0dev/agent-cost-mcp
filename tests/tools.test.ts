@@ -2,9 +2,10 @@ import { cpSync, mkdtempSync, utimesSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getCostTrend, getSessionCost, getToolUsage, suggestOptimizations } from '../src/tools/index.js';
+import { readBudgetState } from '../src/budget.js';
+import { getCostTrend, getSessionCost, getToolUsage, registerTools, suggestOptimizations } from '../src/tools/index.js';
 
 const FIXTURES = path.resolve('fixtures');
 
@@ -16,6 +17,19 @@ function makeFixtureWorkspace(): string {
   utimesSync(path.join(dir, 'session-subagent.jsonl'), now, now);
   return dir;
 }
+
+function makeFakeServer() {
+  return {
+    handlers: new Map<string, (input: unknown) => Promise<unknown>>(),
+    registerTool(name: string, _meta: unknown, handler: (input: unknown) => Promise<unknown>) {
+      this.handlers.set(name, handler);
+    },
+  };
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('get_session_cost', () => {
   it('returns structured totals for a resolved session log', () => {
@@ -66,5 +80,55 @@ describe('suggest_optimizations', () => {
     expect(result.suggestions[0].action.length).toBeGreaterThan(10);
     expect(result.suggestions[0].reason.length).toBeGreaterThan(10);
     expect(() => getSessionCost({ sessionId: 'missing-session', projectPath })).toThrow(/Could not resolve sessionId/);
+  });
+});
+
+describe('budget controls', () => {
+  it('persists deterministic budget state via configure_budget', async () => {
+    const fakeHome = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-budget-home-'));
+    vi.stubEnv('HOME', fakeHome);
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const configure = server.handlers.get('configure_budget');
+    expect(configure).toBeTruthy();
+
+    await configure!({ daily_usd: 10, per_session_usd: 2, alert_thresholds: [80, 50, 100] });
+
+    expect(readBudgetState()).toMatchObject({
+      daily_usd: 10,
+      per_session_usd: 2,
+      alert_thresholds: [50, 80, 100],
+    });
+  });
+
+  it('surfaces threshold crossing on cost trend', async () => {
+    const fakeHome = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-budget-home-'));
+    vi.stubEnv('HOME', fakeHome);
+    const server = makeFakeServer();
+    registerTools(server as never);
+    await server.handlers.get('configure_budget')!({ daily_usd: 0.05, alert_thresholds: [10, 50, 90] });
+
+    const projectPath = makeFixtureWorkspace();
+    const result = getCostTrend({ days: 7, projectPath });
+
+    expect(result.budget_alert).toBeDefined();
+    expect(result.budget_alert?.threshold).toBe(50);
+    expect(result.hard_capped).toBe(false);
+  });
+
+  it('surfaces hard cap on session cost', async () => {
+    const fakeHome = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-budget-home-'));
+    vi.stubEnv('HOME', fakeHome);
+    const server = makeFakeServer();
+    registerTools(server as never);
+    await server.handlers.get('configure_budget')!({ per_session_usd: 0.01, alert_thresholds: [50, 100] });
+
+    const projectPath = makeFixtureWorkspace();
+    const result = getSessionCost({ sessionId: 'session-main', projectPath });
+
+    expect(result.budget_alert?.threshold).toBe(100);
+    expect(result.hard_capped).toBe(true);
+    expect(result.hard_cap_message).toMatch(/cap/i);
   });
 });

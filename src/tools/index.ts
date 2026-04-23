@@ -5,6 +5,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { summarizeSessionLogs } from '../parser.js';
+import { evaluateBudgetStatus, readBudgetState, writeBudgetState } from '../budget.js';
 import { emitMonitorEvent, saveMonitorWebhookConfig } from '../monitorWebhook.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -33,6 +34,22 @@ const suggestionSchema = z.object({
   savingsHint: z.string(),
 });
 
+const configureBudgetRequestSchema = z.object({
+  daily_usd: z.number().positive().optional(),
+  per_session_usd: z.number().positive().optional(),
+  alert_thresholds: z.array(z.number().min(1).max(100)).min(1).optional(),
+});
+
+const configureBudgetOutputSchema = z.object({
+  ok: z.literal(true),
+  budget_state: z.object({
+    daily_usd: z.number().positive().optional(),
+    per_session_usd: z.number().positive().optional(),
+    alert_thresholds: z.array(z.number()),
+    updated_at: z.string(),
+  }),
+});
+
 const monitorWebhookRequestSchema = z.object({
   url: z.string().url(),
   secret: z.string().min(1),
@@ -42,6 +59,15 @@ const monitorWebhookOutputSchema = z.object({
   ok: z.literal(true),
   url: z.string().url(),
   configured: z.literal(true),
+});
+
+const budgetAlertSchema = z.object({
+  scope: z.enum(['daily', 'session']),
+  threshold: z.number(),
+  percentUsed: z.number(),
+  limitUsd: z.number(),
+  currentUsd: z.number(),
+  message: z.string(),
 });
 
 const sessionCostOutputSchema = z.object({
@@ -58,6 +84,9 @@ const sessionCostOutputSchema = z.object({
     linked_tool_result_count: z.number().int().nonnegative(),
     estimated_cost_usd: z.number().nonnegative(),
   }),
+  budget_alert: budgetAlertSchema.optional(),
+  hard_capped: z.boolean(),
+  hard_cap_message: z.string().optional(),
 });
 
 const toolUsageItemSchema = z.object({
@@ -87,6 +116,9 @@ const trendOutputSchema = z.object({
   totalCostUsd: z.number().nonnegative(),
   totalSessions: z.number().int().nonnegative(),
   daily: z.array(trendDaySchema),
+  budget_alert: budgetAlertSchema.optional(),
+  hard_capped: z.boolean(),
+  hard_cap_message: z.string().optional(),
 });
 
 const suggestionsOutputSchema = z.object({
@@ -166,15 +198,25 @@ function summarizeFiles(files: string[]) {
   });
 }
 
-export function getSessionCost(input: z.infer<typeof sessionRequestSchema>): SessionCostResult {
-  const sessionPath = resolveSessionFile(input.sessionId, input.projectPath);
-  const summary = summarizeSessionLogs(sessionPath);
-  return sessionCostOutputSchema.parse({
+function buildBudgetAwareSessionResult(summary: ReturnType<typeof summarizeSessionLogs>) {
+  const budgetStatus = evaluateBudgetStatus({
+    budget: readBudgetState(),
+    sessionCostUsd: summary.totals.estimated_cost_usd,
+    dailyCostUsd: summary.totals.estimated_cost_usd,
+  });
+  return {
     sessionPath: summary.sessionPath,
     subagentPaths: summary.subagentPaths,
     turnCount: summary.turns.length,
     totals: summary.totals,
-  });
+    ...budgetStatus,
+  };
+}
+
+export function getSessionCost(input: z.infer<typeof sessionRequestSchema>): SessionCostResult {
+  const sessionPath = resolveSessionFile(input.sessionId, input.projectPath);
+  const summary = summarizeSessionLogs(sessionPath);
+  return sessionCostOutputSchema.parse(buildBudgetAwareSessionResult(summary));
 }
 
 export function getToolUsage(input: z.infer<typeof toolUsageRequestSchema>): ToolUsageResult {
@@ -274,12 +316,21 @@ export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Cos
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, value]) => ({ date, ...value }));
 
+  const totalCostUsd = Number(daily.reduce((sum, day) => sum + day.costUsd, 0).toFixed(6));
+  const totalSessions = daily.reduce((sum, day) => sum + day.sessions, 0);
+  const budgetStatus = evaluateBudgetStatus({
+    budget: readBudgetState(),
+    sessionCostUsd: totalCostUsd,
+    dailyCostUsd: totalCostUsd,
+  });
+
   const result = trendOutputSchema.parse({
     projectPath: resolveProjectPath(input.projectPath),
     days: input.days,
-    totalCostUsd: Number(daily.reduce((sum, day) => sum + day.costUsd, 0).toFixed(6)),
-    totalSessions: daily.reduce((sum, day) => sum + day.sessions, 0),
+    totalCostUsd,
+    totalSessions,
     daily,
+    ...budgetStatus,
   });
 
   if (result.daily.length > 0) {
@@ -361,6 +412,26 @@ export function suggestOptimizations(input: z.infer<typeof sessionRequestSchema>
 }
 
 export function registerTools(server: McpServer): void {
+  server.registerTool(
+    'configure_budget',
+    {
+      description:
+        'When to use: set deterministic daily/session budget caps and alert thresholds for local cost guardrails. Does NOT enforce billing-side spend limits or notify external systems.',
+      inputSchema: configureBudgetRequestSchema.shape,
+      outputSchema: configureBudgetOutputSchema.shape,
+    },
+    async (input: unknown) => {
+      const parsed = configureBudgetRequestSchema.parse(input);
+      if (parsed.daily_usd === undefined && parsed.per_session_usd === undefined) {
+        throw new Error('At least one budget limit must be provided');
+      }
+      return makeToolResponse(configureBudgetOutputSchema.parse({
+        ok: true,
+        budget_state: writeBudgetState(parsed),
+      }));
+    },
+  );
+
   server.registerTool(
     'get_session_cost',
     {
