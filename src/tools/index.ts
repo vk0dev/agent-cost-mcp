@@ -5,6 +5,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { summarizeSessionLogs } from '../parser.js';
+import { emitMonitorEvent, saveMonitorWebhookConfig } from '../monitorWebhook.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_PROJECT_PATH = path.resolve('fixtures');
@@ -30,6 +31,17 @@ const suggestionSchema = z.object({
   reason: z.string(),
   impact: z.enum(['low', 'medium', 'high']),
   savingsHint: z.string(),
+});
+
+const monitorWebhookRequestSchema = z.object({
+  url: z.string().url(),
+  secret: z.string().min(1),
+});
+
+const monitorWebhookOutputSchema = z.object({
+  ok: z.literal(true),
+  url: z.string().url(),
+  configured: z.literal(true),
 });
 
 const sessionCostOutputSchema = z.object({
@@ -238,7 +250,7 @@ export function getToolUsage(input: z.infer<typeof toolUsageRequestSchema>): Too
   });
 }
 
-export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): CostTrendResult {
+export async function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Promise<CostTrendResult> {
   const files = collectJsonlFiles(input.projectPath);
   const now = Date.now();
   const dailyMap = new Map<string, { sessions: number; costUsd: number; inputTokens: number; outputTokens: number }>();
@@ -262,13 +274,36 @@ export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Cos
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, value]) => ({ date, ...value }));
 
-  return trendOutputSchema.parse({
+  const result = trendOutputSchema.parse({
     projectPath: resolveProjectPath(input.projectPath),
     days: input.days,
     totalCostUsd: Number(daily.reduce((sum, day) => sum + day.costUsd, 0).toFixed(6)),
     totalSessions: daily.reduce((sum, day) => sum + day.sessions, 0),
     daily,
   });
+
+  if (result.daily.length > 0) {
+    const avgDaily = result.totalCostUsd / result.daily.length;
+    const projectedMonthlyUsd = Number((avgDaily * 30).toFixed(2));
+    void emitMonitorEvent({
+      type: 'forecast',
+      source: 'get_cost_trend',
+      createdAt: new Date().toISOString(),
+      payload: {
+        projectPath: result.projectPath,
+        days: result.days,
+        totalCostUsd: result.totalCostUsd,
+        projectedMonthlyUsd,
+      },
+    }).catch(() => undefined);
+  }
+
+  return result;
+}
+
+export function setMonitorWebhook(input: z.infer<typeof monitorWebhookRequestSchema>) {
+  saveMonitorWebhookConfig(input);
+  return monitorWebhookOutputSchema.parse({ ok: true, url: input.url, configured: true });
 }
 
 export function suggestOptimizations(input: z.infer<typeof sessionRequestSchema>): SuggestionsResult {
@@ -356,7 +391,18 @@ export function registerTools(server: McpServer): void {
       inputSchema: costTrendRequestSchema.shape,
       outputSchema: trendOutputSchema.shape,
     },
-    async (input) => makeToolResponse(getCostTrend(costTrendRequestSchema.parse(input))),
+    async (input) => makeToolResponse(await getCostTrend(costTrendRequestSchema.parse(input))),
+  );
+
+  server.registerTool(
+    'set_monitor_webhook',
+    {
+      description:
+        'When to use: configure an alert webhook target for signed monitor events such as forecast/anomaly/cap notifications. Does NOT test the remote endpoint or manage webhook history.',
+      inputSchema: monitorWebhookRequestSchema.shape,
+      outputSchema: monitorWebhookOutputSchema.shape,
+    },
+    async (input) => makeToolResponse(setMonitorWebhook(monitorWebhookRequestSchema.parse(input))),
   );
 
   server.registerTool(
