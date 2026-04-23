@@ -1,15 +1,19 @@
 #!/usr/bin/env node
+import { existsSync, readFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { summarizeSessionLogs } from './parser.js';
 
 export type CliOptions = {
+  command: 'summary' | 'statusline';
   sessionPath?: string;
   subagentPaths: string[];
   help: boolean;
   watch: boolean;
   watchIntervalMs: number;
+  format: 'zsh' | 'bash' | 'tmux';
 };
 
 export type WatchModeOptions = {
@@ -22,21 +26,27 @@ export type WatchModeOptions = {
   maxIterations?: number;
 };
 
+type BudgetState = {
+  daily_usd?: number;
+};
+
 function printHelp(): void {
   console.log(`agent-cost-mcp
 
 Usage:
   agent-cost-mcp <session.jsonl> [--subagent <subagent.jsonl> ...] [--watch] [--watch-interval <seconds>]
+  agent-cost-mcp statusline [--format zsh|bash|tmux] <session.jsonl>
   agent-cost-mcp --help
 
 Options:
   --subagent <path>        Include an additional subagent session log in the summary.
   --watch                  Re-scan the target logs on an interval and print refreshed summaries.
   --watch-interval <secs>  Watch refresh interval in seconds. Default: 5.
+  --format <shell>         Statusline output format. Default: zsh.
   --help                   Show this help text.
 
 Output:
-  Prints a JSON summary with turn counts, token totals, and estimated cost.`);
+  Summary mode prints JSON. Statusline mode prints a compact one-line shell summary.`);
 }
 
 export function parseArgs(argv: string[]): CliOptions {
@@ -45,15 +55,30 @@ export function parseArgs(argv: string[]): CliOptions {
   let help = false;
   let watch = false;
   let watchIntervalMs = 5000;
+  let format: 'zsh' | 'bash' | 'tmux' = 'zsh';
+  let command: 'summary' | 'statusline' = 'summary';
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (arg === 'statusline') {
+      command = 'statusline';
+      continue;
+    }
     if (arg === '--help' || arg === '-h') {
       help = true;
       continue;
     }
     if (arg === '--watch') {
       watch = true;
+      continue;
+    }
+    if (arg === '--format') {
+      const next = argv[index + 1] as CliOptions['format'] | undefined;
+      if (!next || !['zsh', 'bash', 'tmux'].includes(next)) {
+        throw new Error('--format must be one of: zsh, bash, tmux');
+      }
+      format = next;
+      index += 1;
       continue;
     }
     if (arg === '--watch-interval') {
@@ -85,7 +110,7 @@ export function parseArgs(argv: string[]): CliOptions {
     throw new Error(`Unexpected argument: ${arg}`);
   }
 
-  return { sessionPath, subagentPaths, help, watch, watchIntervalMs };
+  return { command, sessionPath, subagentPaths, help, watch, watchIntervalMs, format };
 }
 
 function renderSummary(summary: unknown, watch = false): string {
@@ -93,7 +118,42 @@ function renderSummary(summary: unknown, watch = false): string {
   if (!watch) {
     return body;
   }
-  return `${new Date().toISOString()}\n${body}`;
+  return `${new Date().toISOString()}
+${body}`;
+}
+
+function readBudgetState(): BudgetState | null {
+  const statePath = path.join(os.homedir(), '.agent-cost-mcp', 'budget-state.json');
+  if (!existsSync(statePath)) return null;
+  try {
+    return JSON.parse(readFileSync(statePath, 'utf8')) as BudgetState;
+  } catch {
+    return null;
+  }
+}
+
+export function renderStatusline(
+  summary: {
+    turns: unknown[];
+    totals: { estimated_cost_usd: number; tool_use_count: number };
+  },
+  budgetState: BudgetState | null,
+  _format: 'zsh' | 'bash' | 'tmux',
+): string {
+  const cost = `$${summary.totals.estimated_cost_usd.toFixed(2)}`;
+  const turns = Math.max(summary.turns.length, 1);
+  const toolsPerSession = Math.round(summary.totals.tool_use_count / turns);
+  const parts = [cost];
+
+  if (budgetState?.daily_usd && budgetState.daily_usd > 0) {
+    const dailyPct = Math.round((summary.totals.estimated_cost_usd / budgetState.daily_usd) * 100);
+    parts.push(`${dailyPct}% daily`);
+  }
+
+  parts.push(`${toolsPerSession}tps`);
+
+  const line = parts.join(' • ');
+  return line.length < 80 ? line : `${cost} • ${toolsPerSession}tps`;
 }
 
 export async function runWatchMode(options: WatchModeOptions): Promise<void> {
@@ -116,7 +176,7 @@ export async function runWatchMode(options: WatchModeOptions): Promise<void> {
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   try {
-    const { sessionPath, subagentPaths, help, watch, watchIntervalMs } = parseArgs(argv);
+    const { command, sessionPath, subagentPaths, help, watch, watchIntervalMs, format } = parseArgs(argv);
     if (help || !sessionPath) {
       printHelp();
       return help ? 0 : 1;
@@ -128,6 +188,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     }
 
     const summary = summarizeSessionLogs(sessionPath, subagentPaths);
+    if (command === 'statusline') {
+      console.log(renderStatusline(summary, readBudgetState(), format));
+      return 0;
+    }
+
     console.log(renderSummary(summary));
     return 0;
   } catch (error) {
