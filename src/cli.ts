@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, watch } from 'node:fs';
+import type { FSWatcher } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,8 +23,8 @@ export type WatchModeOptions = {
   watchIntervalMs: number;
   summarize?: typeof summarizeSessionLogs;
   print?: (text: string) => void;
-  sleep?: (ms: number) => Promise<void>;
-  maxIterations?: number;
+  createWatcher?: (path: string, onChange: () => void) => { close(): void };
+  waitForExit?: () => Promise<void>;
 };
 
 type BudgetState = {
@@ -159,18 +160,58 @@ export function renderStatusline(
 export async function runWatchMode(options: WatchModeOptions): Promise<void> {
   const summarize = options.summarize ?? summarizeSessionLogs;
   const print = options.print ?? console.log;
-  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const debounceMs = Math.max(100, options.watchIntervalMs);
+  const createWatcher = options.createWatcher ?? ((targetPath: string, onChange: () => void) => {
+    const watcher: FSWatcher = watch(targetPath, { persistent: true }, () => onChange());
+    return { close: () => watcher.close() };
+  });
+  const waitForExit = options.waitForExit ?? (() => new Promise<void>(() => {}));
 
-  let iteration = 0;
-  while (true) {
-    iteration += 1;
-    const summary = summarize(options.sessionPath, options.subagentPaths);
-    print(renderSummary(summary, true));
+  const watchers: Array<{ close(): void }> = [];
+  let debounceTimer: NodeJS.Timeout | null = null;
+  let lastSummaryBody = '';
+  let refreshInFlight: Promise<void> | null = null;
 
-    if (options.maxIterations && iteration >= options.maxIterations) {
+  const refresh = async () => {
+    if (refreshInFlight) {
+      await refreshInFlight;
       return;
     }
-    await sleep(options.watchIntervalMs);
+    refreshInFlight = (async () => {
+      const summary = summarize(options.sessionPath, options.subagentPaths);
+      const summaryBody = JSON.stringify(summary, null, 2);
+      if (summaryBody !== lastSummaryBody) {
+        print(`${new Date().toISOString()}\n${summaryBody}`);
+        lastSummaryBody = summaryBody;
+      }
+    })();
+    try {
+      await refreshInFlight;
+    } finally {
+      refreshInFlight = null;
+    }
+  };
+
+  const scheduleRefresh = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      void refresh();
+    }, debounceMs);
+  };
+
+  await refresh();
+
+  for (const targetPath of [options.sessionPath, ...options.subagentPaths]) {
+    if (!existsSync(targetPath)) continue;
+    watchers.push(createWatcher(targetPath, scheduleRefresh));
+  }
+
+  try {
+    await waitForExit();
+  } finally {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    for (const watcher of watchers) watcher.close();
   }
 }
 

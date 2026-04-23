@@ -1,3 +1,7 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseArgs, renderStatusline, runWatchMode } from '../src/cli.js';
@@ -76,27 +80,88 @@ describe('renderStatusline', () => {
 });
 
 describe('runWatchMode', () => {
-  it('prints refreshed summaries on each iteration', async () => {
-    const summarize = vi.fn()
-      .mockReturnValueOnce({ totalCostUsd: 1 })
-      .mockReturnValueOnce({ totalCostUsd: 2 });
+  const summaryA = {
+    ...summary,
+    totals: {
+      ...summary.totals,
+      estimated_cost_usd: 1.11,
+    },
+  };
+
+  const summaryB = {
+    ...summary,
+    totals: {
+      ...summary.totals,
+      estimated_cost_usd: 2.22,
+    },
+  };
+
+  it('does not reprint without file events', async () => {
+    const summarize = vi.fn().mockReturnValue(summaryA);
     const print = vi.fn();
-    const sleep = vi.fn().mockResolvedValue(undefined);
+    const watcherClosers: Array<{ close: ReturnType<typeof vi.fn> }> = [];
+    const sessionPath = path.join(mkdtempSync(path.join(os.tmpdir(), 'agent-cost-watch-')), 'session.jsonl');
+    writeFileSync(sessionPath, '{}\n');
 
     await runWatchMode({
-      sessionPath: 'session.jsonl',
+      sessionPath,
       subagentPaths: [],
       watchIntervalMs: 10,
       summarize,
       print,
-      sleep,
-      maxIterations: 2,
+      createWatcher: () => {
+        const watcher = { close: vi.fn() };
+        watcherClosers.push(watcher);
+        return watcher;
+      },
+      waitForExit: async () => {},
     });
 
-    expect(summarize).toHaveBeenCalledTimes(2);
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(summarize).toHaveBeenCalledTimes(1);
+    expect(watcherClosers[0]?.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('debounces burst file events into one bounded refresh', async () => {
+    const summarize = vi.fn()
+      .mockReturnValueOnce(summaryA)
+      .mockReturnValueOnce(summaryB);
+    const print = vi.fn();
+    let onChange: (() => void) | undefined;
+    let resolveExit: (() => void) | undefined;
+    const sessionPath = path.join(mkdtempSync(path.join(os.tmpdir(), 'agent-cost-watch-')), 'session.jsonl');
+    writeFileSync(sessionPath, '{}\n');
+
+    const run = runWatchMode({
+      sessionPath,
+      subagentPaths: [],
+      watchIntervalMs: 10,
+      summarize,
+      print,
+      createWatcher: (_path, handler) => {
+        onChange = handler;
+        return { close: vi.fn() };
+      },
+      waitForExit: () => new Promise<void>((resolve) => {
+        resolveExit = resolve;
+      }),
+    });
+
+    await Promise.resolve();
+    expect(print).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(onChange).toBeTypeOf('function'));
+
+    onChange?.();
+    onChange?.();
+    onChange?.();
+    await new Promise((resolve) => setTimeout(resolve, 175));
+
     expect(print).toHaveBeenCalledTimes(2);
-    expect(print.mock.calls[0][0]).toContain('"totalCostUsd": 1');
-    expect(print.mock.calls[1][0]).toContain('"totalCostUsd": 2');
-    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(summarize).toHaveBeenCalledTimes(2);
+    expect(print.mock.calls[0][0]).toContain('"estimated_cost_usd": 1.11');
+    expect(print.mock.calls[1][0]).toContain('"estimated_cost_usd": 2.22');
+
+    resolveExit?.();
+    await run;
   });
 });
