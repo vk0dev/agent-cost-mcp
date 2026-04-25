@@ -103,6 +103,23 @@ const toolUsageOutputSchema = z.object({
   tools: z.array(toolUsageItemSchema),
 });
 
+const toolRoiItemSchema = z.object({
+  name: z.string(),
+  calls: z.number().int().nonnegative(),
+  linkedResults: z.number().int().nonnegative(),
+  contextSharePercent: z.number().nonnegative(),
+  estimatedCostShareUsd: z.number().nonnegative(),
+  goalProgressScore: z.number().nonnegative(),
+  roiScore: z.number(),
+  efficiency: z.enum(['high', 'medium', 'low']),
+});
+
+const toolRoiOutputSchema = z.object({
+  projectPath: z.string(),
+  sessionCount: z.number().int().nonnegative(),
+  tools: z.array(toolRoiItemSchema),
+});
+
 const trendDaySchema = z.object({
   date: z.string(),
   sessions: z.number().int().nonnegative(),
@@ -151,6 +168,7 @@ const estimateRunOutputSchema = z.object({
 
 export type SessionCostResult = z.infer<typeof sessionCostOutputSchema>;
 export type ToolUsageResult = z.infer<typeof toolUsageOutputSchema>;
+export type ToolRoiResult = z.infer<typeof toolRoiOutputSchema>;
 export type CostTrendResult = z.infer<typeof trendOutputSchema>;
 export type SuggestionsResult = z.infer<typeof suggestionsOutputSchema>;
 export type EstimateRunResult = z.infer<typeof estimateRunOutputSchema>;
@@ -312,6 +330,42 @@ export function getToolUsage(input: z.infer<typeof toolUsageRequestSchema>): Too
   return toolUsageOutputSchema.parse({
     projectPath: resolveProjectPath(input.projectPath),
     sessionCount: filteredFiles.length,
+    tools,
+  });
+}
+
+export function getToolRoi(input: z.infer<typeof toolUsageRequestSchema>): ToolRoiResult {
+  const usage = getToolUsage(input);
+  const files = input.sessionId ? [resolveSessionFile(input.sessionId, input.projectPath)] : collectJsonlFiles(input.projectPath);
+  const now = Date.now();
+  const filteredFiles = files.filter((file) => {
+    if (!input.days) return true;
+    return now - statSync(file).mtimeMs <= input.days * DAY_MS;
+  });
+
+  const summaries = filteredFiles.map((file) => summarizeSessionLogs(file));
+  const totalCostUsd = summaries.reduce((sum, summary) => sum + summary.totals.estimated_cost_usd, 0);
+  const totalLinkedResults = usage.tools.reduce((sum, tool) => sum + tool.linkedResults, 0);
+
+  const tools = usage.tools
+    .map((tool) => {
+      const estimatedCostShareUsd = totalCostUsd === 0 ? 0 : Number(((tool.contextSharePercent / 100) * totalCostUsd).toFixed(6));
+      const goalProgressScore = totalLinkedResults === 0 ? 0 : Number(((tool.linkedResults / totalLinkedResults) * 100).toFixed(1));
+      const roiScore = Number((goalProgressScore - tool.contextSharePercent).toFixed(1));
+      const efficiency = roiScore >= 10 ? 'high' : roiScore >= -10 ? 'medium' : 'low';
+      return {
+        ...tool,
+        estimatedCostShareUsd,
+        goalProgressScore,
+        roiScore,
+        efficiency,
+      };
+    })
+    .sort((a, b) => a.roiScore - b.roiScore || b.estimatedCostShareUsd - a.estimatedCostShareUsd || a.name.localeCompare(b.name));
+
+  return toolRoiOutputSchema.parse({
+    projectPath: usage.projectPath,
+    sessionCount: usage.sessionCount,
     tools,
   });
 }
@@ -527,6 +581,17 @@ export function registerTools(server: McpServer): void {
       outputSchema: toolUsageOutputSchema.shape,
     },
     async (input) => makeToolResponse(getToolUsage(toolUsageRequestSchema.parse(input))),
+  );
+
+  server.registerTool(
+    'get_tool_roi',
+    {
+      description:
+        'When to use: rank tools by a bounded heuristic ROI view using context share, linked result share, and estimated cost share from parsed local sessions. Does NOT claim exact per-tool billing attribution or infer true business value.',
+      inputSchema: toolUsageRequestSchema.shape,
+      outputSchema: toolRoiOutputSchema.shape,
+    },
+    async (input) => makeToolResponse(getToolRoi(toolUsageRequestSchema.parse(input))),
   );
 
   server.registerTool(

@@ -168,4 +168,30 @@ describe('budget controls', () => {
       }),
     ).rejects.toThrow(/must equal prompt_tokens/);
   });
+
+  it('ranks lower-roi tools first using linked results versus cost share', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = makeFixtureWorkspace();
+    const now = new Date();
+    utimesSync(path.join(projectPath, 'session-main.jsonl'), now, now);
+    utimesSync(path.join(projectPath, 'session-subagent.jsonl'), now, now);
+
+    const result = await server.handlers.get('get_tool_roi')!({ projectPath, days: 7 });
+    const payload = result.structuredContent as Record<string, unknown>;
+    const tools = payload.tools as Array<Record<string, unknown>>;
+
+    expect(Array.isArray(tools)).toBe(true);
+    expect(tools.length).toBeGreaterThan(0);
+    expect(tools[0]).toHaveProperty('name');
+    expect(tools[0]).toHaveProperty('roiScore');
+    expect(tools[0]).toHaveProperty('estimatedCostShareUsd');
+    expect(tools[0]).toHaveProperty('goalProgressScore');
+    expect(tools[0]).toHaveProperty('efficiency');
+
+    for (let i = 1; i < tools.length; i += 1) {
+      expect(Number(tools[i - 1].roiScore)).toBeLessThanOrEqual(Number(tools[i].roiScore));
+    }
+  });
 });
