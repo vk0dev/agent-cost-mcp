@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { summarizeSessionLogs } from '../parser.js';
 import { evaluateBudgetStatus, readBudgetState, writeBudgetState } from '../budget.js';
 import { emitMonitorEvent, saveMonitorWebhookConfig } from '../monitorWebhook.js';
+import { DEFAULT_PRICING_TABLE, estimateCostUsd, findNearestPricingModel } from '../pricing.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_PROJECT_PATH = path.resolve('fixtures');
@@ -126,10 +127,33 @@ const suggestionsOutputSchema = z.object({
   suggestions: z.array(suggestionSchema),
 });
 
+const estimateRunRequestSchema = z.object({
+  model: z.string().min(1),
+  prompt_tokens: z.number().int().nonnegative(),
+  expected_output_tokens: z.number().int().nonnegative(),
+  cached_input_tokens: z.number().int().nonnegative().optional(),
+  new_input_tokens: z.number().int().nonnegative().optional(),
+  budget_usd: z.number().nonnegative().optional(),
+});
+
+const estimateRunOutputSchema = z.object({
+  model: z.string(),
+  pricingModel: z.string(),
+  estimateUsd: z.number().nonnegative(),
+  promptTokens: z.number().int().nonnegative(),
+  expectedOutputTokens: z.number().int().nonnegative(),
+  cachedInputTokens: z.number().int().nonnegative(),
+  newInputTokens: z.number().int().nonnegative(),
+  withinBudget: z.boolean().optional(),
+  budgetUsd: z.number().nonnegative().optional(),
+  assumptions: z.array(z.string()),
+});
+
 export type SessionCostResult = z.infer<typeof sessionCostOutputSchema>;
 export type ToolUsageResult = z.infer<typeof toolUsageOutputSchema>;
 export type CostTrendResult = z.infer<typeof trendOutputSchema>;
 export type SuggestionsResult = z.infer<typeof suggestionsOutputSchema>;
+export type EstimateRunResult = z.infer<typeof estimateRunOutputSchema>;
 
 function makeToolResponse<T>(data: T) {
   return {
@@ -357,6 +381,57 @@ export function setMonitorWebhook(input: z.infer<typeof monitorWebhookRequestSch
   return monitorWebhookOutputSchema.parse({ ok: true, url: input.url, configured: true });
 }
 
+export function estimateRunCost(input: z.infer<typeof estimateRunRequestSchema>): EstimateRunResult {
+  const pricingModel = DEFAULT_PRICING_TABLE[input.model] ? input.model : findNearestPricingModel(input.model, DEFAULT_PRICING_TABLE);
+  const promptTokens = input.prompt_tokens;
+  const expectedOutputTokens = input.expected_output_tokens;
+  const cachedInputTokens = input.cached_input_tokens ?? 0;
+  const newInputTokens = input.new_input_tokens ?? Math.max(0, promptTokens - cachedInputTokens);
+
+  if (cachedInputTokens > promptTokens) {
+    throw new Error('cached_input_tokens cannot exceed prompt_tokens');
+  }
+  if (input.new_input_tokens !== undefined && input.new_input_tokens + cachedInputTokens != promptTokens) {
+    throw new Error('new_input_tokens plus cached_input_tokens must equal prompt_tokens');
+  }
+
+  const estimateUsd = estimateCostUsd(
+    input.model,
+    {
+      input_tokens: newInputTokens,
+      output_tokens: expectedOutputTokens,
+      cache_read_input_tokens: cachedInputTokens,
+      cache_creation_input_tokens: 0,
+    },
+    DEFAULT_PRICING_TABLE,
+    () => {},
+  );
+
+  const assumptions = [
+    'Estimate uses the local pricing config and current nearest-model fallback rules.',
+    'cache_creation_input_tokens are assumed to be zero for pre-run estimation unless modeled separately later.',
+  ];
+  if (input.new_input_tokens === undefined) {
+    assumptions.push('new_input_tokens were inferred as prompt_tokens minus cached_input_tokens.');
+  }
+  if (!DEFAULT_PRICING_TABLE[input.model]) {
+    assumptions.push(`Unknown model '${input.model}' falls back to pricing from '${pricingModel}'.`);
+  }
+
+  return estimateRunOutputSchema.parse({
+    model: input.model,
+    pricingModel,
+    estimateUsd,
+    promptTokens,
+    expectedOutputTokens,
+    cachedInputTokens,
+    newInputTokens,
+    withinBudget: input.budget_usd !== undefined ? estimateUsd <= input.budget_usd : undefined,
+    budgetUsd: input.budget_usd,
+    assumptions,
+  });
+}
+
 export function suggestOptimizations(input: z.infer<typeof sessionRequestSchema>): SuggestionsResult {
   const sessionPath = resolveSessionFile(input.sessionId, input.projectPath);
   const summary = summarizeSessionLogs(sessionPath);
@@ -463,6 +538,17 @@ export function registerTools(server: McpServer): void {
       outputSchema: trendOutputSchema.shape,
     },
     async (input) => makeToolResponse(getCostTrend(costTrendRequestSchema.parse(input))),
+  );
+
+  server.registerTool(
+    'estimate_run_cost',
+    {
+      description:
+        'When to use: estimate the likely cost of a planned run before execution using prompt/output token assumptions and cache reuse. Does NOT inspect live runs, predict tool-level ROI, or model cache-creation writes beyond the bounded assumptions in the result.',
+      inputSchema: estimateRunRequestSchema.shape,
+      outputSchema: estimateRunOutputSchema.shape,
+    },
+    async (input) => makeToolResponse(estimateRunCost(estimateRunRequestSchema.parse(input))),
   );
 
   server.registerTool(

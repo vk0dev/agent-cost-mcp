@@ -131,4 +131,41 @@ describe('budget controls', () => {
     expect(result.hard_capped).toBe(true);
     expect(result.hard_cap_message).toMatch(/cap/i);
   });
+
+  it('estimates pre-run cost with cache assumptions and budget check', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const result = await server.handlers.get('estimate_run_cost')!({
+      model: 'gpt-5.5',
+      prompt_tokens: 10000,
+      expected_output_tokens: 2000,
+      cached_input_tokens: 4000,
+      budget_usd: 0.2,
+    });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.pricingModel).toBe('gpt-5.5');
+    expect(payload.promptTokens).toBe(10000);
+    expect(payload.cachedInputTokens).toBe(4000);
+    expect(payload.newInputTokens).toBe(6000);
+    expect(Number(payload.estimateUsd)).toBeGreaterThan(0);
+    expect(payload.withinBudget).toBe(true);
+    expect(payload.assumptions).toContain('new_input_tokens were inferred as prompt_tokens minus cached_input_tokens.');
+  });
+
+  it('rejects impossible pre-run token accounting', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    await expect(
+      server.handlers.get('estimate_run_cost')!({
+        model: 'gpt-5.5-pro',
+        prompt_tokens: 1000,
+        cached_input_tokens: 800,
+        new_input_tokens: 500,
+        expected_output_tokens: 200,
+      }),
+    ).rejects.toThrow(/must equal prompt_tokens/);
+  });
 });
