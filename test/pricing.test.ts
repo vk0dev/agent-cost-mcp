@@ -26,6 +26,8 @@ describe('pricing config', () => {
     expect(table['claude-haiku-4.5']).toBeTruthy();
     expect(table['gpt-5.2']).toBeTruthy();
     expect(table['gpt-5.4']).toBeTruthy();
+    expect(table['gpt-5.5']).toBeTruthy();
+    expect(table['gpt-5.5-pro']).toBeTruthy();
   });
 
   it('matches boot default table to loaded pricing config', () => {
