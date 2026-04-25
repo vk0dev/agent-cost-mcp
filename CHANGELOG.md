@@ -1,4 +1,9 @@
 
+## [2.0.0-beta.2] — 2026-04-25
+
+- added pricing config entries for `gpt-5.5` and `gpt-5.5-pro`
+- extended pricing tests so the new OpenAI model entries stay covered
+
 ## [2.0.0-beta.1] — 2026-04-25
 
 First public beta of the v2.0 Cost Guard release. All five Tier 1 features merged. Tier 2 (anomaly detection, per-tool ROI, pre-run estimate) and Tier 3 (subagent tree, runaway detection, forecasting) follow.
