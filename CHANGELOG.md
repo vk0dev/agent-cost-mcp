@@ -1,4 +1,23 @@
 
+## [2.0.0-beta.1] — 2026-04-25
+
+First public beta of the v2.0 Cost Guard release. All five Tier 1 features merged. Tier 2 (anomaly detection, per-tool ROI, pre-run estimate) and Tier 3 (subagent tree, runaway detection, forecasting) follow.
+
+### Added
+- **fs.watch-based watch mode** (`feat(cli): switch watch mode to fs events`) — true real-time event stream, replacing polling-based watch.
+- **Budget configuration** (`feat(tools): add budget configuration`, new `configure_budget` tool) — daily/per-session caps + tiered alerts at 80/100/150%.
+- **Config-driven pricing** (`feat(pricing): load model pricing from config`) — add new models via JSON files; no code changes.
+- **Statusline mode** (`feat(cli): add statusline output mode`) — one-line summary for zsh/bash/tmux integration.
+- **Signed monitor webhook** (`feat(alerts): add signed monitor webhook`, new `set_monitor_webhook` tool) — HMAC-signed POSTs for piping alerts to Telegram/Slack/PagerDuty.
+
+### Changed
+- Pricing config keys aligned across files.
+- `get_cost_trend` shape preserved for backward compatibility after sync refactor.
+
+### Notes
+- This is a beta. Tier 2 and Tier 3 features are not yet present. Expect v2.0-beta.2 once T2.1 (anomaly detection) ships.
+- Privacy commitment: zero telemetry in v2.0. Even if env vars are set, the client is a no-op until v2.1 design review.
+
 ## [1.0.4] — 2026-04-22
 
 ### Added
