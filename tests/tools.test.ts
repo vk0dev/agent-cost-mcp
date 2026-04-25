@@ -194,4 +194,28 @@ describe('budget controls', () => {
       expect(Number(tools[i - 1].roiScore)).toBeLessThanOrEqual(Number(tools[i].roiScore));
     }
   });
+
+  it('flags daily spend anomalies against the recent baseline', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = makeFixtureWorkspace();
+    const now = new Date();
+    utimesSync(path.join(projectPath, 'session-main.jsonl'), now, now);
+    utimesSync(path.join(projectPath, 'session-subagent.jsonl'), now, now);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0 });
+    const payload = result.structuredContent as Record<string, unknown>;
+    const anomalies = payload.anomalies as Array<Record<string, unknown>>;
+
+    expect(Number(payload.baselineDailyCostUsd)).toBeGreaterThan(0);
+    expect(Array.isArray(anomalies)).toBe(true);
+    if (anomalies.length > 0) {
+      expect(anomalies[0]).toHaveProperty('date');
+      expect(anomalies[0]).toHaveProperty('deviationUsd');
+      expect(anomalies[0]).toHaveProperty('deviationPercent');
+      expect(anomalies[0]).toHaveProperty('severity');
+      expect(anomalies[0]).toHaveProperty('reason');
+    }
+  });
 });

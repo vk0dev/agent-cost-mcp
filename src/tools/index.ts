@@ -139,6 +139,29 @@ const trendOutputSchema = z.object({
   hard_cap_message: z.string().optional(),
 });
 
+const anomalyRequestSchema = z.object({
+  projectPath: z.string().min(1).optional(),
+  days: z.number().int().positive().max(3650).default(14),
+  minDailyCostUsd: z.number().nonnegative().default(0.01),
+});
+
+const anomalyItemSchema = z.object({
+  date: z.string(),
+  costUsd: z.number().nonnegative(),
+  sessions: z.number().int().nonnegative(),
+  deviationUsd: z.number(),
+  deviationPercent: z.number(),
+  severity: z.enum(['medium', 'high']),
+  reason: z.string(),
+});
+
+const anomalyOutputSchema = z.object({
+  projectPath: z.string(),
+  days: z.number().int().positive(),
+  baselineDailyCostUsd: z.number().nonnegative(),
+  anomalies: z.array(anomalyItemSchema),
+});
+
 const suggestionsOutputSchema = z.object({
   sessionPath: z.string(),
   suggestions: z.array(suggestionSchema),
@@ -170,6 +193,7 @@ export type SessionCostResult = z.infer<typeof sessionCostOutputSchema>;
 export type ToolUsageResult = z.infer<typeof toolUsageOutputSchema>;
 export type ToolRoiResult = z.infer<typeof toolRoiOutputSchema>;
 export type CostTrendResult = z.infer<typeof trendOutputSchema>;
+export type AnomalyResult = z.infer<typeof anomalyOutputSchema>;
 export type SuggestionsResult = z.infer<typeof suggestionsOutputSchema>;
 export type EstimateRunResult = z.infer<typeof estimateRunOutputSchema>;
 
@@ -486,6 +510,50 @@ export function estimateRunCost(input: z.infer<typeof estimateRunRequestSchema>)
   });
 }
 
+export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>): AnomalyResult {
+  const trend = getCostTrend({ projectPath: input.projectPath, days: input.days });
+  if (trend.daily.length === 0) {
+    return anomalyOutputSchema.parse({
+      projectPath: trend.projectPath,
+      days: input.days,
+      baselineDailyCostUsd: 0,
+      anomalies: [],
+    });
+  }
+
+  const baselineDailyCostUsd = Number((trend.totalCostUsd / trend.daily.length).toFixed(6));
+  const anomalies = trend.daily
+    .filter((day) => day.costUsd >= input.minDailyCostUsd)
+    .map((day) => {
+      const deviationUsd = Number((day.costUsd - baselineDailyCostUsd).toFixed(6));
+      const deviationPercent = baselineDailyCostUsd === 0 ? 0 : Number(((deviationUsd / baselineDailyCostUsd) * 100).toFixed(1));
+      const absDeviationPercent = Math.abs(deviationPercent);
+      if (absDeviationPercent < 50 && Math.abs(deviationUsd) < 0.01) {
+        return null;
+      }
+      const severity = absDeviationPercent >= 100 || Math.abs(deviationUsd) >= 0.05 ? 'high' : 'medium';
+      const direction = deviationUsd >= 0 ? 'above' : 'below';
+      return {
+        date: day.date,
+        costUsd: day.costUsd,
+        sessions: day.sessions,
+        deviationUsd,
+        deviationPercent,
+        severity,
+        reason: `Daily spend is ${Math.abs(deviationPercent).toFixed(1)}% ${direction} the observed ${input.days}-day baseline.`,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => Math.abs(b.deviationPercent) - Math.abs(a.deviationPercent) || b.costUsd - a.costUsd);
+
+  return anomalyOutputSchema.parse({
+    projectPath: trend.projectPath,
+    days: input.days,
+    baselineDailyCostUsd,
+    anomalies,
+  });
+}
+
 export function suggestOptimizations(input: z.infer<typeof sessionRequestSchema>): SuggestionsResult {
   const sessionPath = resolveSessionFile(input.sessionId, input.projectPath);
   const summary = summarizeSessionLogs(sessionPath);
@@ -603,6 +671,17 @@ export function registerTools(server: McpServer): void {
       outputSchema: trendOutputSchema.shape,
     },
     async (input) => makeToolResponse(getCostTrend(costTrendRequestSchema.parse(input))),
+  );
+
+  server.registerTool(
+    'detect_cost_anomalies',
+    {
+      description:
+        'When to use: flag unusually high or low daily cost spikes against the recent local baseline for a project. Does NOT stream alerts continuously, infer root cause automatically, or replace longer-term monitoring.',
+      inputSchema: anomalyRequestSchema.shape,
+      outputSchema: anomalyOutputSchema.shape,
+    },
+    async (input) => makeToolResponse(detectCostAnomalies(anomalyRequestSchema.parse(input))),
   );
 
   server.registerTool(
