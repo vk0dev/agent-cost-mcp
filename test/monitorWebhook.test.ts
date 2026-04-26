@@ -9,11 +9,14 @@ import {
   saveMonitorWebhookConfig,
   signMonitorPayload,
 } from '../src/monitorWebhook.js';
+import { getTelemetryClient, resetTelemetryClient, setTelemetryClient } from '../src/telemetryClient.js';
+import { getCostTrend } from '../src/tools/index.js';
 
 describe('monitor webhook state', () => {
   afterEach(() => {
     const statePath = getMonitorWebhookStatePath();
     if (existsSync(statePath)) rmSync(statePath, { force: true });
+    resetTelemetryClient();
   });
 
   it('persists monitor webhook config', () => {
@@ -64,5 +67,32 @@ describe('monitor webhook state', () => {
     );
 
     expect(sent).toBe(false);
+  });
+
+  it('defaults telemetry client to a no-op and allows local test injection without network writes', async () => {
+    const emitted: Array<Record<string, unknown>> = [];
+
+    await expect(
+      getTelemetryClient().emit({
+        type: 'forecast',
+        source: 'test',
+        createdAt: '2026-04-22T18:00:00.000Z',
+        payload: { ok: true },
+      }),
+    ).resolves.toBeUndefined();
+
+    setTelemetryClient({
+      async emit(event) {
+        emitted.push(event as unknown as Record<string, unknown>);
+      },
+    });
+
+    const fixturesPath = new URL('../fixtures', import.meta.url).pathname;
+    const result = getCostTrend({ projectPath: fixturesPath, days: 7 });
+
+    expect(result.totalCostUsd).toBeGreaterThan(0);
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0]?.type).toBe('forecast');
+    expect(emitted[0]?.source).toBe('get_cost_trend');
   });
 });

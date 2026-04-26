@@ -6,7 +6,8 @@ import { z } from 'zod';
 
 import { summarizeSessionLogs } from '../parser.js';
 import { evaluateBudgetStatus, readBudgetState, writeBudgetState } from '../budget.js';
-import { emitMonitorEvent, saveMonitorWebhookConfig } from '../monitorWebhook.js';
+import { saveMonitorWebhookConfig } from '../monitorWebhook.js';
+import { getTelemetryClient } from '../telemetryClient.js';
 import { DEFAULT_PRICING_TABLE, estimateCostUsd, findNearestPricingModel } from '../pricing.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -530,7 +531,7 @@ export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Cos
   if (result.daily.length > 0) {
     const avgDaily = result.totalCostUsd / result.daily.length;
     const projectedMonthlyUsd = Number((avgDaily * 30).toFixed(2));
-    void emitMonitorEvent({
+    void getTelemetryClient().emit({
       type: 'forecast',
       source: 'get_cost_trend',
       createdAt: new Date().toISOString(),
