@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { readBudgetState } from '../src/budget.js';
-import { getCostTrend, getSessionCost, getToolUsage, registerTools, suggestOptimizations } from '../src/tools/index.js';
+import { getCostTrend, getSessionCost, getSubagentTree, getToolUsage, registerTools, suggestOptimizations } from '../src/tools/index.js';
 
 const FIXTURES = path.resolve('fixtures');
 
@@ -54,6 +54,28 @@ describe('get_tool_usage', () => {
     expect(result.tools.length).toBeGreaterThan(0);
     expect(result.tools[0].calls).toBeGreaterThan(0);
     expect(result.tools[0].contextSharePercent).toBeGreaterThan(0);
+  });
+});
+
+describe('get_subagent_tree', () => {
+  it('returns a bounded root-plus-child tree for fixture logs', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = makeFixtureWorkspace();
+    const result = getSubagentTree({ sessionId: 'session-main', projectPath });
+    expect(result.projectPath).toBe(projectPath);
+    expect(result.totalSessions).toBe(2);
+    expect(result._meta).toEqual({});
+    expect(result.tree.sessionId).toBe('session-main');
+    expect(result.tree.children).toHaveLength(1);
+    expect(result.tree.children[0]?.sessionId).toBe('session-subagent');
+    expect(result.totalCostUsd).toBeGreaterThan(0);
+
+    const toolResult = await server.handlers.get('get_subagent_tree')!({ sessionId: 'session-main', projectPath });
+    const payload = toolResult.structuredContent as Record<string, unknown>;
+    expect(payload._meta).toEqual({});
+    expect(payload.totalSessions).toBe(2);
   });
 });
 

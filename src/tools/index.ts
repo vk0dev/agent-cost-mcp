@@ -23,6 +23,11 @@ const toolUsageRequestSchema = z.object({
   projectPath: z.string().min(1).optional(),
 });
 
+const subagentTreeRequestSchema = z.object({
+  sessionId: z.string().min(1).optional(),
+  projectPath: z.string().min(1).optional(),
+});
+
 const costTrendRequestSchema = z.object({
   days: z.number().int().positive().max(3650).default(7),
   projectPath: z.string().min(1).optional(),
@@ -140,6 +145,35 @@ const trendOutputSchema = z.object({
   hard_cap_message: z.string().optional(),
 });
 
+const subagentTreeNodeSchema: z.ZodType<{
+  sessionPath: string;
+  sessionId: string;
+  estimatedCostUsd: number;
+  turnCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  children: Array<any>;
+}> = z.lazy(() =>
+  z.object({
+    sessionPath: z.string(),
+    sessionId: z.string(),
+    estimatedCostUsd: z.number().nonnegative(),
+    turnCount: z.number().int().nonnegative(),
+    inputTokens: z.number().nonnegative(),
+    outputTokens: z.number().nonnegative(),
+    children: z.array(subagentTreeNodeSchema),
+  }),
+);
+
+const subagentTreeOutputSchema = z.object({
+  projectPath: z.string(),
+  rootSessionPath: z.string(),
+  totalSessions: z.number().int().nonnegative(),
+  totalCostUsd: z.number().nonnegative(),
+  tree: subagentTreeNodeSchema,
+  _meta: z.record(z.string(), z.unknown()).optional(),
+});
+
 const anomalyRequestSchema = z.object({
   projectPath: z.string().min(1).optional(),
   days: z.number().int().positive().max(3650).default(14),
@@ -199,6 +233,7 @@ export type CostTrendResult = z.infer<typeof trendOutputSchema>;
 export type AnomalyResult = z.infer<typeof anomalyOutputSchema>;
 export type SuggestionsResult = z.infer<typeof suggestionsOutputSchema>;
 export type EstimateRunResult = z.infer<typeof estimateRunOutputSchema>;
+export type SubagentTreeResult = z.infer<typeof subagentTreeOutputSchema>;
 
 function makeToolResponse<T>(data: T) {
   return {
@@ -282,10 +317,39 @@ function buildBudgetAwareSessionResult(summary: ReturnType<typeof summarizeSessi
   };
 }
 
+function buildSubagentTreeNode(sessionPath: string, childPaths: string[]): z.infer<typeof subagentTreeNodeSchema> {
+  const summary = summarizeSessionLogs(sessionPath, childPaths);
+  return {
+    sessionPath,
+    sessionId: path.basename(sessionPath, '.jsonl'),
+    estimatedCostUsd: summary.totals.estimated_cost_usd,
+    turnCount: summary.turns.length,
+    inputTokens: summary.totals.input_tokens,
+    outputTokens: summary.totals.output_tokens,
+    children: childPaths.map((childPath) => buildSubagentTreeNode(childPath, [])),
+  };
+}
+
 export function getSessionCost(input: z.infer<typeof sessionRequestSchema>): SessionCostResult {
   const sessionPath = resolveSessionFile(input.sessionId, input.projectPath);
   const summary = summarizeSessionLogs(sessionPath);
   return sessionCostOutputSchema.parse(buildBudgetAwareSessionResult(summary));
+}
+
+export function getSubagentTree(input: z.infer<typeof subagentTreeRequestSchema>): SubagentTreeResult {
+  const rootSessionPath = resolveSessionFile(input.sessionId, input.projectPath);
+  const allFiles = collectJsonlFiles(input.projectPath);
+  const childPaths = allFiles.filter((file) => file !== rootSessionPath);
+  const tree = buildSubagentTreeNode(rootSessionPath, childPaths);
+
+  return subagentTreeOutputSchema.parse({
+    projectPath: resolveProjectPath(input.projectPath),
+    rootSessionPath,
+    totalSessions: 1 + childPaths.length,
+    totalCostUsd: tree.estimatedCostUsd,
+    tree,
+    _meta: {},
+  });
 }
 
 export function getToolUsage(input: z.infer<typeof toolUsageRequestSchema>): ToolUsageResult {
@@ -656,6 +720,17 @@ export function registerTools(server: McpServer): void {
       outputSchema: toolUsageOutputSchema.shape,
     },
     async (input) => makeToolResponse(getToolUsage(toolUsageRequestSchema.parse(input))),
+  );
+
+  server.registerTool(
+    'get_subagent_tree',
+    {
+      description:
+        'When to use: show a bounded parent-plus-subagent session tree for one local Claude Code session so nested cost attribution is easier to inspect. Does NOT infer hidden lineage beyond the available local JSONL files or reconstruct remote orchestration state.',
+      inputSchema: subagentTreeRequestSchema.shape,
+      outputSchema: subagentTreeOutputSchema.shape,
+    },
+    async (input) => makeToolResponse(getSubagentTree(subagentTreeRequestSchema.parse(input))),
   );
 
   server.registerTool(
