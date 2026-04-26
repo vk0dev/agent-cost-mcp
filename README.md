@@ -10,7 +10,7 @@
 
 **Languages:** English · [日本語](./README.ja.md) · [简体中文](./README.zh-CN.md) · [Русский](./README.ru.md) · [Español](./README.es.md)
 
-<a href="https://vk0dev.github.io/agent-cost-mcp"><img src="./docs/demo.svg" alt="agent-cost-mcp demo" width="900"></a>
+<a href="https://vk0dev.github.io/agent-cost-mcp"><img src="./docs/demo-cost-guard.gif" alt="agent-cost-mcp Cost Guard demo: catches an overnight Read-loop session, flags efficiency=low on the wasted tool" width="787"></a>
 
 ---
 
