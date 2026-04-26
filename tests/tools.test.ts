@@ -146,6 +146,7 @@ describe('budget controls', () => {
     const payload = result.structuredContent as Record<string, unknown>;
 
     expect(payload.pricingModel).toBe('gpt-5.5');
+    expect(payload._meta).toEqual({});
     expect(payload.promptTokens).toBe(10000);
     expect(payload.cachedInputTokens).toBe(4000);
     expect(payload.newInputTokens).toBe(6000);
@@ -184,6 +185,8 @@ describe('budget controls', () => {
 
     expect(Array.isArray(tools)).toBe(true);
     expect(tools.length).toBeGreaterThan(0);
+    expect(payload._meta).toEqual({});
+
     expect(tools[0]).toHaveProperty('name');
     expect(tools[0]).toHaveProperty('roiScore');
     expect(tools[0]).toHaveProperty('estimatedCostShareUsd');
@@ -208,6 +211,7 @@ describe('budget controls', () => {
     const payload = result.structuredContent as Record<string, unknown>;
     const anomalies = payload.anomalies as Array<Record<string, unknown>>;
 
+    expect(payload._meta).toEqual({});
     expect(Number(payload.baselineDailyCostUsd)).toBeGreaterThan(0);
     expect(Array.isArray(anomalies)).toBe(true);
     if (anomalies.length > 0) {

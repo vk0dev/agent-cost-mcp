@@ -118,6 +118,7 @@ const toolRoiOutputSchema = z.object({
   projectPath: z.string(),
   sessionCount: z.number().int().nonnegative(),
   tools: z.array(toolRoiItemSchema),
+  _meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 const trendDaySchema = z.object({
@@ -160,6 +161,7 @@ const anomalyOutputSchema = z.object({
   days: z.number().int().positive(),
   baselineDailyCostUsd: z.number().nonnegative(),
   anomalies: z.array(anomalyItemSchema),
+  _meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 const suggestionsOutputSchema = z.object({
@@ -187,6 +189,7 @@ const estimateRunOutputSchema = z.object({
   withinBudget: z.boolean().optional(),
   budgetUsd: z.number().nonnegative().optional(),
   assumptions: z.array(z.string()),
+  _meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type SessionCostResult = z.infer<typeof sessionCostOutputSchema>;
@@ -391,6 +394,7 @@ export function getToolRoi(input: z.infer<typeof toolUsageRequestSchema>): ToolR
     projectPath: usage.projectPath,
     sessionCount: usage.sessionCount,
     tools,
+    _meta: {},
   });
 }
 
@@ -507,6 +511,7 @@ export function estimateRunCost(input: z.infer<typeof estimateRunRequestSchema>)
     withinBudget: input.budget_usd !== undefined ? estimateUsd <= input.budget_usd : undefined,
     budgetUsd: input.budget_usd,
     assumptions,
+    _meta: {},
   });
 }
 
@@ -518,6 +523,7 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
       days: input.days,
       baselineDailyCostUsd: 0,
       anomalies: [],
+      _meta: {},
     });
   }
 
@@ -551,6 +557,7 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
     days: input.days,
     baselineDailyCostUsd,
     anomalies,
+    _meta: {},
   });
 }
 
