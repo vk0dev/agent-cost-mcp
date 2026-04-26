@@ -1,4 +1,14 @@
 
+## [2.0.0-beta.3] — 2026-04-26
+
+### Added
+- `estimate_run_cost` — pre-run cost estimate tool with cache assumptions and optional budget check.
+- `get_tool_roi` — bounded per-tool ROI ranking over local session logs.
+- `detect_cost_anomalies` — bounded daily spend anomaly detection over local cost trend data.
+
+### Notes
+- Tier 2 slice is now present in the beta line. These tools remain local-first heuristics, not continuous monitoring or exact billing attribution.
+
 ## [2.0.0-beta.2] — 2026-04-25
 
 - added pricing config entries for `gpt-5.5` and `gpt-5.5-pro`
