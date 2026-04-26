@@ -1,6 +1,6 @@
 {
   "name": "@vk0/agent-cost-mcp",
-  "version": "2.0.0-beta.4",
+  "version": "2.0.0-beta.5",
   "description": "Local-first Claude Code cost analyzer. Parses JSONL session logs to surface per-tool spend, daily trends, and optimization hints. Zero cloud, no API key.",
   "mcpName": "io.github.vk0dev/agent-cost-mcp",
   "type": "module",
