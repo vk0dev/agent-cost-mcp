@@ -33,6 +33,12 @@ const costTrendRequestSchema = z.object({
   projectPath: z.string().min(1).optional(),
 });
 
+const costForecastRequestSchema = z.object({
+  projectPath: z.string().min(1).optional(),
+  lookbackDays: z.number().int().positive().max(3650).default(7),
+  forecastDays: z.number().int().positive().max(365).default(30),
+});
+
 const suggestionSchema = z.object({
   action: z.string(),
   reason: z.string(),
@@ -145,6 +151,19 @@ const trendOutputSchema = z.object({
   hard_cap_message: z.string().optional(),
 });
 
+const costForecastOutputSchema = z.object({
+  projectPath: z.string(),
+  lookbackDays: z.number().int().positive(),
+  forecastDays: z.number().int().positive(),
+  baselineDailyCostUsd: z.number().nonnegative(),
+  projectedTotalUsd: z.number().nonnegative(),
+  projectedMonthlyUsd: z.number().nonnegative(),
+  method: z.enum(['linear-average-rc1']),
+  confidence: z.enum(['low', 'medium']),
+  assumptions: z.array(z.string()),
+  _meta: z.record(z.string(), z.unknown()).optional(),
+});
+
 const subagentTreeNodeSchema: z.ZodType<{
   sessionPath: string;
   sessionId: string;
@@ -238,6 +257,7 @@ export type AnomalyResult = z.infer<typeof anomalyOutputSchema>;
 export type SuggestionsResult = z.infer<typeof suggestionsOutputSchema>;
 export type EstimateRunResult = z.infer<typeof estimateRunOutputSchema>;
 export type SubagentTreeResult = z.infer<typeof subagentTreeOutputSchema>;
+export type CostForecastResult = z.infer<typeof costForecastOutputSchema>;
 
 function makeToolResponse<T>(data: T) {
   return {
@@ -526,6 +546,47 @@ export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Cos
   return result;
 }
 
+export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>): CostForecastResult {
+  let trend: CostTrendResult | null = null;
+  try {
+    trend = getCostTrend({ projectPath: input.projectPath, days: input.lookbackDays });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('No session log files (*.jsonl) found')) {
+      throw error;
+    }
+  }
+
+  const projectPath = resolveProjectPath(input.projectPath);
+  const observedDays = trend ? trend.daily.length : 0;
+  const baselineDailyCostUsd = !trend || observedDays === 0 ? 0 : Number((trend.totalCostUsd / observedDays).toFixed(6));
+  const projectedTotalUsd = Number((baselineDailyCostUsd * input.forecastDays).toFixed(2));
+  const projectedMonthlyUsd = Number((baselineDailyCostUsd * 30).toFixed(2));
+  const confidence = observedDays >= 3 ? 'medium' : 'low';
+  const assumptions = [
+    'Forecast uses the observed average daily cost across the local lookback window.',
+    'rc.1 keeps forecasting linear and local-first; seasonal weighting is deferred until a later release.',
+  ];
+  if (observedDays === 0) {
+    assumptions.push('No recent daily data was available, so the forecast falls back to zero baseline.');
+  } else if (observedDays < input.lookbackDays) {
+    assumptions.push(`Only ${observedDays} day(s) in the lookback window had observable session activity.`);
+  }
+
+  return costForecastOutputSchema.parse({
+    projectPath,
+    lookbackDays: input.lookbackDays,
+    forecastDays: input.forecastDays,
+    baselineDailyCostUsd,
+    projectedTotalUsd,
+    projectedMonthlyUsd,
+    method: 'linear-average-rc1',
+    confidence,
+    assumptions,
+    _meta: {},
+  });
+}
+
 export function setMonitorWebhook(input: z.infer<typeof monitorWebhookRequestSchema>) {
   saveMonitorWebhookConfig(input);
   return monitorWebhookOutputSchema.parse({ ok: true, url: input.url, configured: true });
@@ -803,6 +864,17 @@ export function registerTools(server: McpServer): void {
       outputSchema: trendOutputSchema.shape,
     },
     async (input) => makeToolResponse(getCostTrend(costTrendRequestSchema.parse(input))),
+  );
+
+  server.registerTool(
+    'get_cost_forecast',
+    {
+      description:
+        'When to use: project a bounded local cost forecast from recent daily trend data so you can estimate upcoming spend. rc.1 uses a simple linear average, so it does NOT model seasonality, external events, or remote billing feeds.',
+      inputSchema: costForecastRequestSchema.shape,
+      outputSchema: costForecastOutputSchema.shape,
+    },
+    async (input) => makeToolResponse(getCostForecast(costForecastRequestSchema.parse(input))),
   );
 
   server.registerTool(

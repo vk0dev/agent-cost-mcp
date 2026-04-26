@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { readBudgetState } from '../src/budget.js';
-import { getCostTrend, getSessionCost, getSubagentTree, getToolUsage, registerTools, suggestOptimizations } from '../src/tools/index.js';
+import { getCostForecast, getCostTrend, getSessionCost, getSubagentTree, getToolUsage, registerTools, suggestOptimizations } from '../src/tools/index.js';
 
 const FIXTURES = path.resolve('fixtures');
 
@@ -89,6 +89,41 @@ describe('get_cost_trend', () => {
     expect(result.totalSessions).toBe(3);
     expect(result.daily.length).toBe(1);
     expect(result.totalCostUsd).toBeGreaterThan(0);
+  });
+});
+
+describe('get_cost_forecast', () => {
+  it('projects a bounded local forecast from recent cost trend data', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = makeFixtureWorkspace();
+    const result = getCostForecast({ projectPath, lookbackDays: 7, forecastDays: 14 });
+
+    expect(result.projectPath).toBe(projectPath);
+    expect(result.lookbackDays).toBe(7);
+    expect(result.forecastDays).toBe(14);
+    expect(result.baselineDailyCostUsd).toBeGreaterThan(0);
+    expect(result.projectedTotalUsd).toBeGreaterThan(0);
+    expect(result.projectedMonthlyUsd).toBeGreaterThan(0);
+    expect(result.method).toBe('linear-average-rc1');
+    expect(result._meta).toEqual({});
+
+    const toolResult = await server.handlers.get('get_cost_forecast')!({ projectPath, lookbackDays: 7, forecastDays: 14 });
+    const payload = toolResult.structuredContent as Record<string, unknown>;
+    expect(payload._meta).toEqual({});
+    expect(payload.method).toBe('linear-average-rc1');
+  });
+
+  it('returns a zero-baseline low-confidence forecast when no recent daily data exists', () => {
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-forecast-empty-'));
+    const result = getCostForecast({ projectPath, lookbackDays: 7, forecastDays: 30 });
+
+    expect(result.baselineDailyCostUsd).toBe(0);
+    expect(result.projectedTotalUsd).toBe(0);
+    expect(result.projectedMonthlyUsd).toBe(0);
+    expect(result.confidence).toBe('low');
+    expect(result.assumptions.some((item) => item.includes('zero baseline'))).toBe(true);
   });
 });
 
