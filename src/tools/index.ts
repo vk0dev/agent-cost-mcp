@@ -178,6 +178,7 @@ const anomalyRequestSchema = z.object({
   projectPath: z.string().min(1).optional(),
   days: z.number().int().positive().max(3650).default(14),
   minDailyCostUsd: z.number().nonnegative().default(0.01),
+  recentTurnWindow: z.number().int().positive().max(50).default(10),
 });
 
 const anomalyItemSchema = z.object({
@@ -195,6 +196,9 @@ const anomalyOutputSchema = z.object({
   days: z.number().int().positive(),
   baselineDailyCostUsd: z.number().nonnegative(),
   anomalies: z.array(anomalyItemSchema),
+  runaway_detected: z.boolean(),
+  runaway_signature: z.string().optional(),
+  suggested_action: z.string().optional(),
   _meta: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -581,12 +585,55 @@ export function estimateRunCost(input: z.infer<typeof estimateRunRequestSchema>)
 
 export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>): AnomalyResult {
   const trend = getCostTrend({ projectPath: input.projectPath, days: input.days });
+  const files = collectJsonlFiles(input.projectPath);
+  const runawayWindow = input.recentTurnWindow;
+
+  let runawayDetected = false;
+  let runawaySignature: string | undefined;
+  let suggestedAction: string | undefined;
+
+  for (const file of files) {
+    const lines = readFileSync(file, 'utf8').split(/\r?\n/).filter(Boolean);
+    const signatures: Array<{ signature: string; linkedProgress: number }> = [];
+
+    for (const line of lines) {
+      const record = JSON.parse(line) as Record<string, any>;
+      const type = String(record.type ?? record.message_type ?? record.role ?? '').toLowerCase();
+      if (!type.includes('assistant')) continue;
+      const content = record.message?.content ?? record.content ?? [];
+      if (!Array.isArray(content)) continue;
+      const toolNames = content.filter((item) => item?.type === 'tool_use').map((item) => String(item.name ?? 'unknown'));
+      if (toolNames.length === 0) continue;
+      const linkedProgress = content.filter((item) => item?.type === 'tool_result').length;
+      signatures.push({
+        signature: toolNames.slice().sort().join(','),
+        linkedProgress,
+      });
+    }
+
+    const recent = signatures.slice(-runawayWindow);
+    if (recent.length === runawayWindow) {
+      const first = recent[0]?.signature;
+      const allSame = recent.every((entry) => entry.signature === first);
+      const noProgress = recent.every((entry) => entry.linkedProgress === 0);
+      if (first && allSame && noProgress) {
+        runawayDetected = true;
+        runawaySignature = first;
+        suggestedAction = `Stop or re-scope the repeated tool loop around '${first}', then inspect why ${runawayWindow} recent turns produced no linked tool-result progress.`;
+        break;
+      }
+    }
+  }
+
   if (trend.daily.length === 0) {
     return anomalyOutputSchema.parse({
       projectPath: trend.projectPath,
       days: input.days,
       baselineDailyCostUsd: 0,
       anomalies: [],
+      runaway_detected: runawayDetected,
+      runaway_signature: runawaySignature,
+      suggested_action: suggestedAction,
       _meta: {},
     });
   }
@@ -621,6 +668,9 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
     days: input.days,
     baselineDailyCostUsd,
     anomalies,
+    runaway_detected: runawayDetected,
+    runaway_signature: runawaySignature,
+    suggested_action: suggestedAction,
     _meta: {},
   });
 }

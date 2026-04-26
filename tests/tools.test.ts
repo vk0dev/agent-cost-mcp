@@ -50,7 +50,7 @@ describe('get_tool_usage', () => {
     const result = getToolUsage({ projectPath });
 
     expect(result.projectPath).toBe(projectPath);
-    expect(result.sessionCount).toBe(2);
+    expect(result.sessionCount).toBe(3);
     expect(result.tools.length).toBeGreaterThan(0);
     expect(result.tools[0].calls).toBeGreaterThan(0);
     expect(result.tools[0].contextSharePercent).toBeGreaterThan(0);
@@ -65,17 +65,17 @@ describe('get_subagent_tree', () => {
     const projectPath = makeFixtureWorkspace();
     const result = getSubagentTree({ sessionId: 'session-main', projectPath });
     expect(result.projectPath).toBe(projectPath);
-    expect(result.totalSessions).toBe(2);
+    expect(result.totalSessions).toBe(3);
     expect(result._meta).toEqual({});
     expect(result.tree.sessionId).toBe('session-main');
-    expect(result.tree.children).toHaveLength(1);
-    expect(result.tree.children[0]?.sessionId).toBe('session-subagent');
+    expect(result.tree.children).toHaveLength(2);
+    expect(result.tree.children.map((child) => child.sessionId).sort()).toEqual(['demo-anomaly', 'session-subagent']);
     expect(result.totalCostUsd).toBeGreaterThan(0);
 
     const toolResult = await server.handlers.get('get_subagent_tree')!({ sessionId: 'session-main', projectPath });
     const payload = toolResult.structuredContent as Record<string, unknown>;
     expect(payload._meta).toEqual({});
-    expect(payload.totalSessions).toBe(2);
+    expect(payload.totalSessions).toBe(3);
   });
 });
 
@@ -86,7 +86,7 @@ describe('get_cost_trend', () => {
 
     expect(result.projectPath).toBe(projectPath);
     expect(result.days).toBe(7);
-    expect(result.totalSessions).toBe(2);
+    expect(result.totalSessions).toBe(3);
     expect(result.daily.length).toBe(1);
     expect(result.totalCostUsd).toBeGreaterThan(0);
   });
@@ -135,8 +135,8 @@ describe('budget controls', () => {
     const result = getCostTrend({ days: 7, projectPath });
 
     expect(result.budget_alert).toBeDefined();
-    expect(result.budget_alert?.threshold).toBe(50);
-    expect(result.hard_capped).toBe(false);
+    expect(result.budget_alert?.threshold).toBe(90);
+    expect(result.hard_capped).toBe(true);
   });
 
   it('surfaces hard cap on session cost', async () => {
@@ -234,6 +234,7 @@ describe('budget controls', () => {
     const anomalies = payload.anomalies as Array<Record<string, unknown>>;
 
     expect(payload._meta).toEqual({});
+    expect(payload.runaway_detected).toBe(false);
     expect(Number(payload.baselineDailyCostUsd)).toBeGreaterThan(0);
     expect(Array.isArray(anomalies)).toBe(true);
     if (anomalies.length > 0) {
@@ -243,5 +244,28 @@ describe('budget controls', () => {
       expect(anomalies[0]).toHaveProperty('severity');
       expect(anomalies[0]).toHaveProperty('reason');
     }
+  });
+
+  it('detects a repeated identical tool loop with no progress in the recent window', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-loop-'));
+    const repeatedAssistantLine = JSON.stringify({
+      type: 'assistant',
+      message: {
+        content: [{ type: 'tool_use', name: 'web_search' }],
+      },
+    });
+    const loopLog = Array.from({ length: 10 }, () => repeatedAssistantLine).join('\n');
+    require('node:fs').writeFileSync(path.join(projectPath, 'session-loop.jsonl'), `${loopLog}\n`);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 10 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload._meta).toEqual({});
+    expect(payload.runaway_detected).toBe(true);
+    expect(payload.runaway_signature).toBe('web_search');
+    expect(String(payload.suggested_action)).toContain('web_search');
   });
 });
