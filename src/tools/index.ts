@@ -366,8 +366,7 @@ export function getSubagentTree(input: z.infer<typeof subagentTreeRequestSchema>
   const allFiles = collectJsonlFiles(input.projectPath);
   const childPaths = allFiles.filter((file) => file !== rootSessionPath);
   const tree = buildSubagentTreeNode(rootSessionPath, childPaths);
-
-  return subagentTreeOutputSchema.parse({
+  const result = subagentTreeOutputSchema.parse({
     projectPath: resolveProjectPath(input.projectPath),
     rootSessionPath,
     totalSessions: 1 + childPaths.length,
@@ -375,6 +374,20 @@ export function getSubagentTree(input: z.infer<typeof subagentTreeRequestSchema>
     tree,
     _meta: {},
   });
+
+  void getTelemetryClient().emit({
+    type: 'forecast',
+    source: 'get_subagent_tree',
+    createdAt: new Date().toISOString(),
+    payload: {
+      projectPath: result.projectPath,
+      rootSessionPath: result.rootSessionPath,
+      totalSessions: result.totalSessions,
+      totalCostUsd: result.totalCostUsd,
+    },
+  }).catch(() => undefined);
+
+  return result;
 }
 
 export function getToolUsage(input: z.infer<typeof toolUsageRequestSchema>): ToolUsageResult {
@@ -574,7 +587,7 @@ export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>
     assumptions.push(`Only ${observedDays} day(s) in the lookback window had observable session activity.`);
   }
 
-  return costForecastOutputSchema.parse({
+  const result = costForecastOutputSchema.parse({
     projectPath,
     lookbackDays: input.lookbackDays,
     forecastDays: input.forecastDays,
@@ -586,6 +599,23 @@ export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>
     assumptions,
     _meta: {},
   });
+
+  void getTelemetryClient().emit({
+    type: 'forecast',
+    source: 'get_cost_forecast',
+    createdAt: new Date().toISOString(),
+    payload: {
+      projectPath: result.projectPath,
+      lookbackDays: result.lookbackDays,
+      forecastDays: result.forecastDays,
+      baselineDailyCostUsd: result.baselineDailyCostUsd,
+      projectedTotalUsd: result.projectedTotalUsd,
+      projectedMonthlyUsd: result.projectedMonthlyUsd,
+      confidence: result.confidence,
+    },
+  }).catch(() => undefined);
+
+  return result;
 }
 
 export function setMonitorWebhook(input: z.infer<typeof monitorWebhookRequestSchema>) {
@@ -688,7 +718,7 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
   }
 
   if (trend.daily.length === 0) {
-    return anomalyOutputSchema.parse({
+    const result = anomalyOutputSchema.parse({
       projectPath: trend.projectPath,
       days: input.days,
       baselineDailyCostUsd: 0,
@@ -698,6 +728,22 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
       suggested_action: suggestedAction,
       _meta: {},
     });
+
+    void getTelemetryClient().emit({
+      type: 'anomaly',
+      source: 'detect_cost_anomalies',
+      createdAt: new Date().toISOString(),
+      payload: {
+        projectPath: result.projectPath,
+        days: result.days,
+        baselineDailyCostUsd: result.baselineDailyCostUsd,
+        anomalyCount: result.anomalies.length,
+        runawayDetected: result.runaway_detected,
+        runawaySignature: result.runaway_signature,
+      },
+    }).catch(() => undefined);
+
+    return result;
   }
 
   const baselineDailyCostUsd = Number((trend.totalCostUsd / trend.daily.length).toFixed(6));
@@ -725,7 +771,7 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
     .filter((item): item is NonNullable<typeof item> => item !== null)
     .sort((a, b) => Math.abs(b.deviationPercent) - Math.abs(a.deviationPercent) || b.costUsd - a.costUsd);
 
-  return anomalyOutputSchema.parse({
+  const result = anomalyOutputSchema.parse({
     projectPath: trend.projectPath,
     days: input.days,
     baselineDailyCostUsd,
@@ -735,6 +781,22 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
     suggested_action: suggestedAction,
     _meta: {},
   });
+
+  void getTelemetryClient().emit({
+    type: 'anomaly',
+    source: 'detect_cost_anomalies',
+    createdAt: new Date().toISOString(),
+    payload: {
+      projectPath: result.projectPath,
+      days: result.days,
+      baselineDailyCostUsd: result.baselineDailyCostUsd,
+      anomalyCount: result.anomalies.length,
+      runawayDetected: result.runaway_detected,
+      runawaySignature: result.runaway_signature,
+    },
+  }).catch(() => undefined);
+
+  return result;
 }
 
 export function suggestOptimizations(input: z.infer<typeof sessionRequestSchema>): SuggestionsResult {

@@ -2,9 +2,10 @@ import { cpSync, mkdtempSync, utimesSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { readBudgetState } from '../src/budget.js';
+import { resetTelemetryClient, setTelemetryClient } from '../src/telemetryClient.js';
 import { getCostForecast, getCostTrend, getSessionCost, getSubagentTree, getToolUsage, registerTools, suggestOptimizations } from '../src/tools/index.js';
 
 const FIXTURES = path.resolve('fixtures');
@@ -27,8 +28,14 @@ function makeFakeServer() {
   };
 }
 
+beforeEach(() => {
+  resetTelemetryClient();
+});
+
 afterEach(() => {
+  resetTelemetryClient();
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
 });
 
 describe('get_session_cost', () => {
@@ -77,6 +84,21 @@ describe('get_subagent_tree', () => {
     expect(payload._meta).toEqual({});
     expect(payload.totalSessions).toBe(3);
   });
+
+  it('keeps _meta and uses the local telemetry client only when telemetry is opted in', () => {
+    vi.stubEnv('AGENT_COST_MCP_TELEMETRY_ENABLED', '1');
+    const projectPath = makeFixtureWorkspace();
+    const emit = vi.fn().mockResolvedValue(undefined);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    setTelemetryClient({ emit });
+
+    const result = getSubagentTree({ sessionId: 'session-main', projectPath });
+
+    expect(result._meta).toEqual({});
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'forecast', source: 'get_subagent_tree' }));
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe('get_cost_trend', () => {
@@ -113,6 +135,22 @@ describe('get_cost_forecast', () => {
     const payload = toolResult.structuredContent as Record<string, unknown>;
     expect(payload._meta).toEqual({});
     expect(payload.method).toBe('linear-average-rc1');
+  });
+
+  it('keeps _meta and uses the local telemetry client only when telemetry is opted in', () => {
+    vi.stubEnv('AGENT_COST_MCP_TELEMETRY_ENABLED', '1');
+    const projectPath = makeFixtureWorkspace();
+    const emit = vi.fn().mockResolvedValue(undefined);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    setTelemetryClient({ emit });
+
+    const result = getCostForecast({ projectPath, lookbackDays: 7, forecastDays: 14 });
+
+    expect(result._meta).toEqual({});
+    expect(emit).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenNthCalledWith(1, expect.objectContaining({ type: 'forecast', source: 'get_cost_trend' }));
+    expect(emit).toHaveBeenNthCalledWith(2, expect.objectContaining({ type: 'forecast', source: 'get_cost_forecast' }));
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('returns a zero-baseline low-confidence forecast when no recent daily data exists', () => {
@@ -302,5 +340,33 @@ describe('budget controls', () => {
     expect(payload.runaway_detected).toBe(true);
     expect(payload.runaway_signature).toBe('web_search');
     expect(String(payload.suggested_action)).toContain('web_search');
+  });
+
+  it('keeps _meta and uses the local telemetry client only when telemetry is opted in, including runaway-only output', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+    vi.stubEnv('AGENT_COST_MCP_TELEMETRY_ENABLED', '1');
+    const emit = vi.fn().mockResolvedValue(undefined);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    setTelemetryClient({ emit });
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-loop-'));
+    const repeatedAssistantLine = JSON.stringify({
+      type: 'assistant',
+      message: {
+        content: [{ type: 'tool_use', name: 'web_search' }],
+      },
+    });
+    require('node:fs').writeFileSync(path.join(projectPath, 'session-loop.jsonl'), `${Array.from({ length: 10 }, () => repeatedAssistantLine).join('\n')}\n`);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 10 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload._meta).toEqual({});
+    expect(payload.runaway_detected).toBe(true);
+    expect(emit).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenNthCalledWith(1, expect.objectContaining({ type: 'forecast', source: 'get_cost_trend' }));
+    expect(emit).toHaveBeenNthCalledWith(2, expect.objectContaining({ type: 'anomaly', source: 'detect_cost_anomalies' }));
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
