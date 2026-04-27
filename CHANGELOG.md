@@ -1,3 +1,8 @@
+## [2.0.0-beta.6] — 2026-04-27
+
+### Fixed
+- Wired telemetry through the remaining cost analysis tools so the Tier 3 analytics surface now uses the intended local telemetry path consistently.
+
 ## [2.0.0-beta.5] — 2026-04-26
 
 ### Added
