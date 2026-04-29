@@ -401,6 +401,20 @@ describe('budget controls', () => {
     ).rejects.toThrow(/must equal prompt_tokens/);
   });
 
+  it('rejects cached tokens that exceed the prompt budget', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    await expect(
+      server.handlers.get('estimate_run_cost')!({
+        model: 'gpt-5.5',
+        prompt_tokens: 1000,
+        cached_input_tokens: 1200,
+        expected_output_tokens: 200,
+      }),
+    ).rejects.toThrow(/cannot exceed prompt_tokens/);
+  });
+
   it('falls back to the default pricing entry for an unknown model family and says so explicitly', async () => {
     const server = makeFakeServer();
     registerTools(server as never);
@@ -495,6 +509,33 @@ describe('budget controls', () => {
 
     expect(payload._meta).toEqual({});
     expect(payload.baselineDailyCostUsd).toBeGreaterThan(0);
+    expect(payload.anomalies).toEqual([]);
+    expect(payload.runaway_detected).toBe(false);
+  });
+
+  it('returns an empty anomaly set when logs exist but all activity falls outside the lookback window', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-anomaly-stale-'));
+    const sessionPath = path.join(projectPath, 'session-stale.jsonl');
+    writeSessionLog(sessionPath, [
+      {
+        type: 'assistant',
+        uuid: 'stale-assistant',
+        model: 'gpt-5.5',
+        usage: { input_tokens: 1500, output_tokens: 150 },
+        message: { content: [] },
+      },
+    ]);
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    utimesSync(sessionPath, tenDaysAgo, tenDaysAgo);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 1, minDailyCostUsd: 0 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload._meta).toEqual({});
+    expect(payload.baselineDailyCostUsd).toBe(0);
     expect(payload.anomalies).toEqual([]);
     expect(payload.runaway_detected).toBe(false);
   });
