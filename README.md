@@ -276,24 +276,24 @@ Agent: [calls suggest_optimizations]
 
 ## Comparison vs alternatives
 
-| Feature | `@vk0/agent-cost-mcp` | API Dashboard | Manual `grep`/`jq` |
-|---------|:---------------------:|:-------------:|:-------------------:|
-| MCP integration (agent calls directly) | ✅ | ❌ | ❌ |
-| Per-tool cost breakdown | ✅ | ❌ | ⚠️ DIY scripting |
-| Daily cost trends | ✅ | ✅ (account-level) | ⚠️ manual aggregation |
-| Optimization suggestions | ✅ | ❌ | ❌ |
-| Session-level granularity | ✅ | ❌ (account totals) | ✅ (if you know the format) |
-| Local-first / zero cloud | ✅ | ❌ (web only) | ✅ |
-| Works offline | ✅ | ❌ | ✅ |
-| No API key required | ✅ | ❌ (requires login) | ✅ |
-| Setup effort | 1-line `npx` | browser login | knowledge of JSONL schema |
-| Repeatable without manual effort | ✅ | ✅ | ❌ (re-run each time) |
+The tools below overlap, but they optimize for different jobs. The short version: if you want a local MCP server that an agent can query directly for per-tool and per-session cost analysis, `@vk0/agent-cost-mcp` is the narrow fit. If you want a dashboard, burn-rate monitor, or generic token utility first, one of the alternatives may be a better starting point.
 
-**API Dashboard** ([console.anthropic.com](https://console.anthropic.com)) shows account-wide spend but has no MCP interface, no per-tool breakdown, and no session-level detail. Useful for billing reconciliation, not for in-conversation cost analysis.
+| Tool | Better fit when... | Where it appears stronger | Where `@vk0/agent-cost-mcp` is stronger |
+|------|--------------------|---------------------------|------------------------------------------|
+| [`ccusage`](https://github.com/ryoppippi/ccusage) | You want a polished terminal/TUI dashboard for Claude Code usage and burn tracking. | More mature dashboard experience and stronger operator-facing monitoring UX. | MCP-first access for agents, per-tool breakdowns, and optimization prompts inside the conversation instead of a separate dashboard. |
+| [`claude-usage`](https://github.com/phuryn/claude-usage) | You mainly want a local usage dashboard for your own Claude Code sessions. | Simpler fit for personal usage monitoring and visual inspection. | More focused on structured MCP tool responses, agent-callable analysis, and session-level cost questions beyond dashboard viewing. |
+| [`Claude-Code-Usage-Monitor`](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor) | You want a dedicated usage monitor with alerts/monitoring flavor rather than agent tooling. | Better if your priority is ongoing monitoring and watcher-style visibility. | Better if your priority is letting the agent itself inspect logs, compare sessions, and explain cost drivers on demand. |
+| [`Token Analyzer MCP`](https://github.com/proggreg/mcp-token-analyzer) | You need a general MCP token-analysis utility across MCP payloads, prompts, or message shapes. | Broader token-analysis framing, not tied as tightly to Claude Code cost logs. | More specific to real Claude Code JSONL spend analysis, pricing-aware cost math, and Claude-session-oriented breakdowns. |
+| [`CodeBurn`](https://github.com/getagentseal/codeburn) | You want burn-rate or usage monitoring with emphasis on limits, alerts, and spend watch behavior. | Stronger when the main question is "am I burning too fast?" rather than "which tool/session caused this?" | Stronger for offline, per-session, per-tool cost attribution and agent self-serve investigation during a workflow. |
 
-**Manual log parsing** (`grep`/`jq` on `~/.claude/projects/**/*.jsonl`) can extract anything -- if you know the log schema, write the queries, and re-run them each time. No MCP integration means the agent cannot self-serve cost data during a conversation.
+A few honest caveats:
 
-**Best fit:** solo devs and small teams who want fine-grained, agent-accessible cost visibility without leaving the conversation. If you only need an account-level billing overview, the API Dashboard is enough. If you want the agent to answer "where did my tokens go?" on its own, install this.
+- `ccusage`, `claude-usage`, and Claude-Code-Usage-Monitor may be the better choice if you mostly want a human-facing dashboard and do **not** need MCP integration.
+- Token Analyzer MCP is likely the better fit if your real problem is token accounting in arbitrary MCP inputs rather than Claude Code session cost attribution.
+- CodeBurn may be the better fit if limit tracking and burn monitoring matter more than session-forensics detail.
+- `@vk0/agent-cost-mcp` is intentionally narrower: local Claude Code JSONL logs, pricing-aware cost analysis, MCP-callable outputs, and actionable breakdowns inside the agent loop.
+
+**Best fit:** solo devs and small teams who want an agent to answer "where did my tokens go, which tool caused it, and what should I change?" without sending logs to a cloud service or opening a separate dashboard.
 
 ## FAQ
 
