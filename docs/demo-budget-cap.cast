@@ -1,0 +1,8 @@
+{"version":3,"term":{"cols":80,"rows":24},"timestamp":1777476736,"command":"node scripts/demo-budget-cap.mjs"}
+[0.123, "o", "$ agent-cost-mcp demo --budget-cap\r\n"]
+[0.352, "o", "Configuring a monthly team budget...\r\n"]
+[0.360, "o", "{\r\n  \"alert_thresholds\": [\r\n    50,\r\n    80,\r\n    100\r\n  ],\r\n  \"updated_at\": \"2026-04-29T15:32:17.666Z\"\r\n}\r\n"]
+[0.502, "o", "Evaluating current spend against the cap...\r\n"]
+[0.351, "o", "{\r\n  \"hard_capped\": false\r\n}\r\n"]
+[0.651, "o", "Budget cap demo complete.\r\n"]
+[0.355, "x", "0"]

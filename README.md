@@ -138,6 +138,8 @@ Eleven MCP tools, all operating on local JSONL session logs.
 | **`get_cost_trend`** | Roll session logs into a day-by-day cost trend for a local project path, with per-day sessions, tokens, and estimated spend. |
 | **`get_subagent_tree`** | Return a parent-plus-subagent session tree for one local Claude Code session, with cost summed per branch. The data was always in `subagentPaths` — this tool surfaces it. |
 
+![subagent tree demo](docs/demo-subagent-tree.gif)
+
 **Optimization analytics:**
 
 | Tool | What it does |
@@ -151,6 +153,8 @@ Eleven MCP tools, all operating on local JSONL session logs.
 | Tool | What it does |
 |------|-------------|
 | **`get_cost_forecast`** | Project a bounded local cost forecast from recent daily trend data. Linear extrapolation by default; degrades gracefully if <7 days of history. |
+
+![forecast demo](docs/demo-forecast.gif)
 | **`estimate_run_cost`** | Estimate the likely cost of a planned run before execution, given prompt + model + expected tool calls. Returns `{low, expected, high}` with confidence. |
 
 **Configuration (write):**
@@ -158,6 +162,8 @@ Eleven MCP tools, all operating on local JSONL session logs.
 | Tool | What it does |
 |------|-------------|
 | **`configure_budget`** | Set daily/per-session budget caps with tiered alert thresholds (e.g. 80/100/150%). When a threshold crosses, the next cost-query tool returns the alert in its response — your agent can read that and stop. State persisted to `~/.agent-cost-mcp/budget-state.json`. |
+
+![budget cap demo](docs/demo-budget-cap.gif)
 | **`set_monitor_webhook`** | Register an HMAC-signed webhook target for monitor events (anomaly fires, budget thresholds, runaway flags). Pipe alerts into Telegram/Slack/PagerDuty. |
 
 <details>

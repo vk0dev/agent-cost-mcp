@@ -1,0 +1,6 @@
+{"version":3,"term":{"cols":80,"rows":24},"timestamp":1777476739,"command":"node scripts/demo-forecast.mjs"}
+[0.161, "o", "$ agent-cost-mcp demo --forecast\r\n"]
+[0.352, "o", "Using local fixture logs from ./fixtures as the forecast baseline\r\n"]
+[0.360, "o", "{\r\n  \"projectPath\": \"/Users/vkdev/projects/agent-cost-mcp/fixtures\",\r\n  \"lookbackDays\": 7,\r\n  \"forecastDays\": 14,\r\n  \"baselineDailyCostUsd\": 8.662187,\r\n  \"projectedTotalUsd\": 121.27,\r\n  \"projectedMonthlyUsd\": 259.87,\r\n  \"method\": \"linear-average-rc1\",\r\n  \"confidence\": \"low\",\r\n  \"assumptions\": [\r\n    \"Forecast uses the observed average daily cost across the local lookback window.\",\r\n    \"rc.1 keeps forecasting linear and local-first; seasonal weighting is deferred until a later release.\",\r\n    \"Only 1 day(s) in the lookback window had observable session activity.\"\r\n  ],\r\n  \"_meta\": {}\r\n}\r\n"]
+[0.701, "o", "Forecast demo complete.\r\n"]
+[0.357, "x", "0"]
