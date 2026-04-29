@@ -125,6 +125,18 @@ In any client, ask: *"What tools does agent-cost expose?"* — you should see el
 
 If nothing shows up, see the [FAQ](#faq).
 
+## Marketplace / Discovery
+
+Current verified discovery surfaces:
+
+- **npm:** canonical install path via `npx -y @vk0/agent-cost-mcp`
+- **MCP Registry:** package metadata and registry-facing identity
+- **Smithery:** verified live third-party listing at `https://smithery.ai/servers/unfucker/agent-cost-mcp`
+
+At the time of this README update, Glama and mcp.so are **not** listed here as live presence because their product pages were not re-verified as active listings.
+
+If you are discovering this package for the first time, the preferred path today is npm for installation and Smithery for marketplace-style browsing.
+
 ## Docs and how-to guides
 
 If you want concrete operator workflows instead of the full reference, start here:
