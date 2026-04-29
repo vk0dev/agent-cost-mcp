@@ -12,6 +12,31 @@ function writeSessionLog(filePath: string, records: Array<Record<string, unknown
   writeFileSync(filePath, `${records.map((record) => JSON.stringify(record)).join('\n')}\n`);
 }
 
+function assistantToolUseRecord(id: string, name: string, input: Record<string, unknown> = {}) {
+  return {
+    type: 'assistant',
+    uuid: id,
+    message: {
+      content: [{ type: 'tool_use', id: `${id}-tool`, name, input }],
+    },
+  };
+}
+
+function userToolResultRecord(assistantId: string, options: { isError?: boolean; text?: string } = {}) {
+  return {
+    type: 'user',
+    parentUuid: assistantId,
+    message: {
+      content: [{
+        type: 'tool_result',
+        tool_use_id: `${assistantId}-tool`,
+        is_error: options.isError ?? false,
+        content: options.text ?? (options.isError ? 'temporary failure' : 'ok'),
+      }],
+    },
+  };
+}
+
 const FIXTURES = path.resolve('fixtures');
 
 function makeFixtureWorkspace(): string {
@@ -460,14 +485,10 @@ describe('budget controls', () => {
     registerTools(server as never);
 
     const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-loop-'));
-    const repeatedAssistantLine = JSON.stringify({
-      type: 'assistant',
-      message: {
-        content: [{ type: 'tool_use', name: 'web_search' }],
-      },
-    });
-    const loopLog = Array.from({ length: 10 }, () => repeatedAssistantLine).join('\n');
-    require('node:fs').writeFileSync(path.join(projectPath, 'session-loop.jsonl'), `${loopLog}\n`);
+    writeSessionLog(
+      path.join(projectPath, 'session-loop.jsonl'),
+      Array.from({ length: 10 }, (_, index) => assistantToolUseRecord(`loop-${index}`, 'web_search', { query: 'same query' })),
+    );
 
     const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 10 });
     const payload = result.structuredContent as Record<string, unknown>;
@@ -475,7 +496,122 @@ describe('budget controls', () => {
     expect(payload._meta).toEqual({});
     expect(payload.runaway_detected).toBe(true);
     expect(payload.runaway_signature).toBe('web_search');
+    expect(payload.runaway_reason_code).toBe('identical_signature_no_progress');
     expect(String(payload.suggested_action)).toContain('web_search');
+  });
+
+  it('does not flag repeated searches when queries change and successful results keep arriving', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-productive-search-'));
+    const records = Array.from({ length: 10 }, (_, index) => [
+      assistantToolUseRecord(`search-${index}`, 'web_search', { query: `topic refinement ${index}` }),
+      userToolResultRecord(`search-${index}`, { text: `result batch ${index}` }),
+    ]).flat();
+    writeSessionLog(path.join(projectPath, 'session-productive-search.jsonl'), records);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 10 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(false);
+    expect(payload.runaway_reason_code).toBeUndefined();
+  });
+
+  it('does not flag bounded retries that eventually succeed', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-retry-success-'));
+    writeSessionLog(path.join(projectPath, 'session-retry-success.jsonl'), [
+      assistantToolUseRecord('retry-1', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-1', { isError: true, text: '429 rate limited' }),
+      assistantToolUseRecord('retry-2', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-2', { isError: true, text: 'timeout' }),
+      assistantToolUseRecord('retry-3', 'web_search', { query: 'status api narrow' }),
+      userToolResultRecord('retry-3', { text: 'service recovered' }),
+      assistantToolUseRecord('retry-4', 'read', { path: 'postmortem.md' }),
+      userToolResultRecord('retry-4', { text: 'summary available' }),
+    ]);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 4 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(false);
+    expect(payload.runaway_reason_code).toBeUndefined();
+  });
+
+  it('does not flag productive repeated tool use across fan-out style work', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-fanout-'));
+    writeSessionLog(path.join(projectPath, 'session-fanout.jsonl'), [
+      assistantToolUseRecord('fanout-1', 'web_search', { query: 'service A docs' }),
+      userToolResultRecord('fanout-1', { text: 'service A result' }),
+      assistantToolUseRecord('fanout-2', 'web_search', { query: 'service B docs' }),
+      userToolResultRecord('fanout-2', { text: 'service B result' }),
+      assistantToolUseRecord('fanout-3', 'web_search', { query: 'service C docs' }),
+      userToolResultRecord('fanout-3', { text: 'service C result' }),
+      assistantToolUseRecord('fanout-4', 'read', { path: 'service-a.md' }),
+      userToolResultRecord('fanout-4', { text: 'service A notes' }),
+      assistantToolUseRecord('fanout-5', 'read', { path: 'service-b.md' }),
+      userToolResultRecord('fanout-5', { text: 'service B notes' }),
+      assistantToolUseRecord('fanout-6', 'read', { path: 'service-c.md' }),
+      userToolResultRecord('fanout-6', { text: 'service C notes' }),
+    ]);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 6 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(false);
+    expect(payload.runaway_reason_code).toBeUndefined();
+  });
+
+  it('detects an alternating two-tool loop with no progress', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-alt-loop-'));
+    writeSessionLog(path.join(projectPath, 'session-alt-loop.jsonl'), [
+      assistantToolUseRecord('alt-1', 'web_search', { query: 'same query' }),
+      assistantToolUseRecord('alt-2', 'read', { path: 'same-file.md' }),
+      assistantToolUseRecord('alt-3', 'web_search', { query: 'same query' }),
+      assistantToolUseRecord('alt-4', 'read', { path: 'same-file.md' }),
+      assistantToolUseRecord('alt-5', 'web_search', { query: 'same query' }),
+      assistantToolUseRecord('alt-6', 'read', { path: 'same-file.md' }),
+      assistantToolUseRecord('alt-7', 'web_search', { query: 'same query' }),
+      assistantToolUseRecord('alt-8', 'read', { path: 'same-file.md' }),
+      assistantToolUseRecord('alt-9', 'web_search', { query: 'same query' }),
+      assistantToolUseRecord('alt-10', 'read', { path: 'same-file.md' }),
+    ]);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 10 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(true);
+    expect(payload.runaway_reason_code).toBe('alternating_cycle_no_progress');
+    expect(String(payload.runaway_signature)).toContain('web_search');
+    expect(String(payload.runaway_signature)).toContain('read');
+  });
+
+  it('detects a retry storm with repeated hard errors and no adaptation', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-retry-storm-'));
+    const records = Array.from({ length: 10 }, (_, index) => [
+      assistantToolUseRecord(`storm-${index}`, 'web_search', { query: 'stuck query' }),
+      userToolResultRecord(`storm-${index}`, { isError: true, text: '429 rate limited' }),
+    ]).flat();
+    writeSessionLog(path.join(projectPath, 'session-retry-storm.jsonl'), records);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 10 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(true);
+    expect(payload.runaway_reason_code).toBe('retry_storm_no_adaptation');
+    expect(payload.runaway_signature).toBe('web_search');
   });
 
   it('keeps _meta and uses the local telemetry client only when telemetry is opted in, including runaway-only output', async () => {
@@ -487,19 +623,17 @@ describe('budget controls', () => {
     setTelemetryClient({ emit });
 
     const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-loop-'));
-    const repeatedAssistantLine = JSON.stringify({
-      type: 'assistant',
-      message: {
-        content: [{ type: 'tool_use', name: 'web_search' }],
-      },
-    });
-    require('node:fs').writeFileSync(path.join(projectPath, 'session-loop.jsonl'), `${Array.from({ length: 10 }, () => repeatedAssistantLine).join('\n')}\n`);
+    writeSessionLog(
+      path.join(projectPath, 'session-loop.jsonl'),
+      Array.from({ length: 10 }, (_, index) => assistantToolUseRecord(`loop-${index}`, 'web_search', { query: 'same query' })),
+    );
 
     const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 10 });
     const payload = result.structuredContent as Record<string, unknown>;
 
     expect(payload._meta).toEqual({});
     expect(payload.runaway_detected).toBe(true);
+    expect(payload.runaway_reason_code).toBe('identical_signature_no_progress');
     expect(emit).toHaveBeenCalledTimes(2);
     expect(emit).toHaveBeenNthCalledWith(1, expect.objectContaining({ type: 'forecast', source: 'get_cost_trend' }));
     expect(emit).toHaveBeenNthCalledWith(2, expect.objectContaining({ type: 'anomaly', source: 'detect_cost_anomalies' }));

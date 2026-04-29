@@ -218,6 +218,7 @@ const anomalyOutputSchema = z.object({
   anomalies: z.array(anomalyItemSchema),
   runaway_detected: z.boolean(),
   runaway_signature: z.string().optional(),
+  runaway_reason_code: z.enum(['identical_signature_no_progress', 'alternating_cycle_no_progress', 'retry_storm_no_adaptation']).optional(),
   suggested_action: z.string().optional(),
   _meta: z.record(z.string(), z.unknown()).optional(),
 });
@@ -684,39 +685,81 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
 
   let runawayDetected = false;
   let runawaySignature: string | undefined;
+  let runawayReasonCode: 'identical_signature_no_progress' | 'alternating_cycle_no_progress' | 'retry_storm_no_adaptation' | undefined;
   let suggestedAction: string | undefined;
 
   for (const file of files) {
     const lines = readFileSync(file, 'utf8').split(/\r?\n/).filter(Boolean);
-    const signatures: Array<{ signature: string; linkedProgress: number }> = [];
+    const turns: Array<{
+      signature: string;
+      toolNameSignature: string;
+      inputSignature: string;
+      successCount: number;
+      errorCount: number;
+    }> = [];
+    let pendingTurn: (typeof turns)[number] | null = null;
 
     for (const line of lines) {
       const record = JSON.parse(line) as Record<string, any>;
       const type = String(record.type ?? record.message_type ?? record.role ?? '').toLowerCase();
-      if (!type.includes('assistant')) continue;
       const content = record.message?.content ?? record.content ?? [];
       if (!Array.isArray(content)) continue;
-      const toolNames = content.filter((item) => item?.type === 'tool_use').map((item) => String(item.name ?? 'unknown'));
-      if (toolNames.length === 0) continue;
-      const linkedProgress = content.filter((item) => item?.type === 'tool_result').length;
-      signatures.push({
-        signature: toolNames.slice().sort().join(','),
-        linkedProgress,
-      });
-    }
 
-    const recent = signatures.slice(-runawayWindow);
-    if (recent.length === runawayWindow) {
-      const first = recent[0]?.signature;
-      const allSame = recent.every((entry) => entry.signature === first);
-      const noProgress = recent.every((entry) => entry.linkedProgress === 0);
-      if (first && allSame && noProgress) {
-        runawayDetected = true;
-        runawaySignature = first;
-        suggestedAction = `Stop or re-scope the repeated tool loop around '${first}', then inspect why ${runawayWindow} recent turns produced no linked tool-result progress.`;
-        break;
+      if (type.includes('assistant')) {
+        const toolUses = content.filter((item) => item?.type === 'tool_use');
+        if (toolUses.length === 0) continue;
+        const toolNameSignature = toolUses.map((item) => String(item.name ?? 'unknown')).sort().join(',');
+        const inputSignature = JSON.stringify(toolUses.map((item) => item?.input ?? null));
+        pendingTurn = {
+          signature: `${toolNameSignature}::${inputSignature}`,
+          toolNameSignature,
+          inputSignature,
+          successCount: 0,
+          errorCount: 0,
+        };
+        turns.push(pendingTurn);
+        continue;
+      }
+
+      if (type.includes('user') && pendingTurn) {
+        const toolResults = content.filter((item) => item?.type === 'tool_result');
+        for (const item of toolResults) {
+          if (item?.is_error === true) {
+            pendingTurn.errorCount += 1;
+          } else {
+            pendingTurn.successCount += 1;
+          }
+        }
       }
     }
+
+    const recent = turns.slice(-runawayWindow);
+    if (recent.length !== runawayWindow) continue;
+
+    const allNoSuccess = recent.every((entry) => entry.successCount === 0);
+    const allSameSignature = recent.every((entry) => entry.signature === recent[0]?.signature);
+    const repeatedHardErrors = recent.every((entry) => entry.errorCount > 0);
+    const alternatingTwoSignatureCycle = recent.every((entry, index) => entry.signature === recent[index % 2]?.signature)
+      && new Set(recent.map((entry) => entry.signature)).size === 2;
+
+    if (allNoSuccess && allSameSignature) {
+      runawayDetected = true;
+      runawaySignature = recent[0]?.toolNameSignature;
+      runawayReasonCode = repeatedHardErrors ? 'retry_storm_no_adaptation' : 'identical_signature_no_progress';
+      suggestedAction = repeatedHardErrors
+        ? `Stop the repeated failing loop around '${runawaySignature}', then adapt the query, back off retries, or hand control to a human.`
+        : `Stop or re-scope the repeated tool loop around '${runawaySignature}', then inspect why ${runawayWindow} recent turns produced no successful tool-result progress.`;
+      break;
+    }
+
+    if (allNoSuccess && alternatingTwoSignatureCycle) {
+      runawayDetected = true;
+      runawaySignature = [...new Set(recent.map((entry) => entry.toolNameSignature))].join(' -> ');
+      runawayReasonCode = 'alternating_cycle_no_progress';
+      suggestedAction = `Stop the alternating loop around '${runawaySignature}', then inspect why the last ${runawayWindow} turns kept cycling without successful progress.`;
+      break;
+    }
+
   }
 
   if (trend.daily.length === 0) {
@@ -727,6 +770,7 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
       anomalies: [],
       runaway_detected: runawayDetected,
       runaway_signature: runawaySignature,
+      runaway_reason_code: runawayReasonCode,
       suggested_action: suggestedAction,
       _meta: {},
     });
@@ -742,6 +786,7 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
         anomalyCount: result.anomalies.length,
         runawayDetected: result.runaway_detected,
         runawaySignature: result.runaway_signature,
+        runawayReasonCode: result.runaway_reason_code,
       },
     }).catch(() => undefined);
 
@@ -780,6 +825,7 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
     anomalies,
     runaway_detected: runawayDetected,
     runaway_signature: runawaySignature,
+    runaway_reason_code: runawayReasonCode,
     suggested_action: suggestedAction,
     _meta: {},
   });
@@ -795,6 +841,7 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
       anomalyCount: result.anomalies.length,
       runawayDetected: result.runaway_detected,
       runawaySignature: result.runaway_signature,
+      runawayReasonCode: result.runaway_reason_code,
     },
   }).catch(() => undefined);
 
