@@ -120,14 +120,38 @@ In any client, ask: *"What tools does agent-cost expose?"* — you should see fo
 
 ## Tools
 
-Four MCP tools, all operating on local JSONL session logs:
+Eleven MCP tools, all operating on local JSONL session logs.
+
+**Cost queries (read-only):**
 
 | Tool | What it does |
 |------|-------------|
 | **`get_session_cost`** | Parse a single Claude Code session and return token totals (input, output, cache-read, cache-creation), turn count, and estimated USD cost. |
 | **`get_tool_usage`** | Aggregate tool invocations across one session or a filtered project log directory, reporting per-tool call counts and context-share percentages. |
 | **`get_cost_trend`** | Roll session logs into a day-by-day cost trend for a local project path, with per-day sessions, tokens, and estimated spend. |
-| **`suggest_optimizations`** | Generate lightweight optimization suggestions (cache-read ratios, abandoned tool calls, heaviest turns) from a parsed session log. |
+| **`get_subagent_tree`** | Return a parent-plus-subagent session tree for one local Claude Code session, with cost summed per branch. The data was always in `subagentPaths` — this tool surfaces it. |
+
+**Optimization analytics:**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_tool_roi`** | Rank tools by a bounded ROI heuristic: cost share, linked results, and context share. Tools that fire repeatedly without linked results get tagged `efficiency=low` (the runaway-loop signature). |
+| **`suggest_optimizations`** | Lightweight optimization suggestions (cache-read ratios, abandoned tool calls, heaviest turns) from a parsed session log. Complementary to `get_tool_roi` — narrative form rather than ranked. |
+| **`detect_cost_anomalies`** | Flag unusually high or low daily cost spikes against the recent local baseline. Days deviating ≥50% (or ≥$0.05) from the trimmed mean surface as anomalies. |
+
+**Predictive (pre-spend):**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_cost_forecast`** | Project a bounded local cost forecast from recent daily trend data. Linear extrapolation by default; degrades gracefully if <7 days of history. |
+| **`estimate_run_cost`** | Estimate the likely cost of a planned run before execution, given prompt + model + expected tool calls. Returns `{low, expected, high}` with confidence. |
+
+**Configuration (write):**
+
+| Tool | What it does |
+|------|-------------|
+| **`configure_budget`** | Set daily/per-session budget caps with tiered alert thresholds (e.g. 80/100/150%). When a threshold crosses, the next cost-query tool returns the alert in its response — your agent can read that and stop. State persisted to `~/.agent-cost-mcp/budget-state.json`. |
+| **`set_monitor_webhook`** | Register an HMAC-signed webhook target for monitor events (anomaly fires, budget thresholds, runaway flags). Pipe alerts into Telegram/Slack/PagerDuty. |
 
 <details>
 <summary><strong>Example: <code>get_session_cost</code> output</strong></summary>
