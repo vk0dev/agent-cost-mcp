@@ -1,3 +1,12 @@
+## [2.0.0-beta.8] — 2026-04-29
+
+### Added
+- Added deterministic daily marketplace invariant auditing for the verified Smithery surface and README marketplace-alignment drift checks.
+
+### Changed
+- Upgraded the local cost forecast baseline from the flat rc.1 average to a deterministic non-seasonal recency-weighted daily average (`recency-weighted-average-rc2`).
+- Tuned runaway detection to stay progress-aware and expose structured `runaway_reason_code` output for identical loops, alternating cycles, and retry storms.
+
 ## [2.0.0-beta.7] — 2026-04-29
 
 ### Fixed
