@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, utimesSync } from 'node:fs';
+import { cpSync, mkdtempSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -7,6 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readBudgetState } from '../src/budget.js';
 import { resetTelemetryClient, setTelemetryClient } from '../src/telemetryClient.js';
 import { getCostForecast, getCostTrend, getSessionCost, getSubagentTree, getToolUsage, registerTools, suggestOptimizations } from '../src/tools/index.js';
+
+function writeSessionLog(filePath: string, records: Array<Record<string, unknown>>) {
+  writeFileSync(filePath, `${records.map((record) => JSON.stringify(record)).join('\n')}\n`);
+}
 
 const FIXTURES = path.resolve('fixtures');
 
@@ -98,6 +102,30 @@ describe('get_subagent_tree', () => {
     expect(emit).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'forecast', source: 'get_subagent_tree' }));
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('stays cycle-safe when the project tree contains a symlink back to the root session log', () => {
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-tree-cycle-'));
+    const rootPath = path.join(projectPath, 'session-main.jsonl');
+    writeSessionLog(rootPath, [
+      {
+        type: 'assistant',
+        uuid: 'root-assistant',
+        model: 'gpt-5.5',
+        usage: { input_tokens: 1000, output_tokens: 200 },
+        message: { content: [] },
+      },
+    ]);
+    symlinkSync(rootPath, path.join(projectPath, 'session-main-alias.jsonl'));
+
+    const result = getSubagentTree({ sessionId: 'session-main', projectPath });
+
+    expect(result.totalSessions).toBe(2);
+    expect(result.tree.sessionId).toBe('session-main');
+    expect(result.tree.children).toHaveLength(1);
+    expect(result.tree.children[0]?.sessionId).toBe('session-main-alias');
+    expect(result.tree.children[0]?.children).toEqual([]);
+    expect(result.totalCostUsd).toBeGreaterThan(0);
   });
 });
 
@@ -265,6 +293,23 @@ describe('budget controls', () => {
     ).rejects.toThrow(/must equal prompt_tokens/);
   });
 
+  it('falls back to the default pricing entry for an unknown model family and says so explicitly', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const result = await server.handlers.get('estimate_run_cost')!({
+      model: 'mystery-model-9000',
+      prompt_tokens: 2000,
+      expected_output_tokens: 400,
+    });
+    const payload = result.structuredContent as Record<string, unknown>;
+    const assumptions = payload.assumptions as string[];
+
+    expect(payload.pricingModel).toBe('default');
+    expect(Number(payload.estimateUsd)).toBeGreaterThan(0);
+    expect(assumptions.some((item) => item.includes("Unknown model 'mystery-model-9000' falls back to pricing from 'default'."))).toBe(true);
+  });
+
   it('ranks lower-roi tools first using linked results versus cost share', async () => {
     const server = makeFakeServer();
     registerTools(server as never);
@@ -317,6 +362,97 @@ describe('budget controls', () => {
       expect(anomalies[0]).toHaveProperty('severity');
       expect(anomalies[0]).toHaveProperty('reason');
     }
+  });
+
+  it('returns no anomalies for a single effective day because there is no baseline contrast yet', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-anomaly-single-'));
+    const sessionPath = path.join(projectPath, 'session-single.jsonl');
+    writeSessionLog(sessionPath, [
+      {
+        type: 'assistant',
+        uuid: 'single-assistant',
+        model: 'gpt-5.5',
+        usage: { input_tokens: 1000, output_tokens: 500 },
+        message: { content: [] },
+      },
+    ]);
+    const now = new Date();
+    utimesSync(sessionPath, now, now);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload._meta).toEqual({});
+    expect(payload.baselineDailyCostUsd).toBeGreaterThan(0);
+    expect(payload.anomalies).toEqual([]);
+    expect(payload.runaway_detected).toBe(false);
+  });
+
+  it('keeps zero-cost days out of anomaly output even when all observed usage is zero', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-anomaly-zero-'));
+    const sessionPath = path.join(projectPath, 'session-zero.jsonl');
+    writeSessionLog(sessionPath, [
+      {
+        type: 'assistant',
+        uuid: 'zero-assistant',
+        model: 'unknown',
+        message: { content: [] },
+      },
+    ]);
+    const now = new Date();
+    utimesSync(sessionPath, now, now);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload._meta).toEqual({});
+    expect(payload.baselineDailyCostUsd).toBe(0);
+    expect(payload.anomalies).toEqual([]);
+    expect(payload.runaway_detected).toBe(false);
+  });
+
+  it('marks every observed day anomalous when all days diverge sharply from the average baseline', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-anomaly-all-days-'));
+    const expensivePath = path.join(projectPath, 'session-expensive.jsonl');
+    const quietPath = path.join(projectPath, 'session-quiet.jsonl');
+    writeSessionLog(expensivePath, [
+      {
+        type: 'assistant',
+        uuid: 'expensive-assistant',
+        model: 'gpt-5.5',
+        usage: { input_tokens: 100000, output_tokens: 50000 },
+        message: { content: [] },
+      },
+    ]);
+    writeSessionLog(quietPath, [
+      {
+        type: 'assistant',
+        uuid: 'quiet-assistant',
+        model: 'unknown',
+        message: { content: [] },
+      },
+    ]);
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    utimesSync(expensivePath, now, now);
+    utimesSync(quietPath, yesterday, yesterday);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0 });
+    const payload = result.structuredContent as Record<string, unknown>;
+    const anomalies = payload.anomalies as Array<Record<string, unknown>>;
+
+    expect(payload._meta).toEqual({});
+    expect(anomalies).toHaveLength(2);
+    expect(anomalies.every((item) => Number(item.deviationPercent) === 100 || Number(item.deviationPercent) === -100)).toBe(true);
   });
 
   it('detects a repeated identical tool loop with no progress in the recent window', async () => {

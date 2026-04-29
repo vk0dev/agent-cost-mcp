@@ -304,10 +304,12 @@ function resolveSessionFile(sessionId?: string, projectPath?: string): string {
   }
 
   const normalized = sessionId.replace(/\.jsonl$/i, '');
-  const matched = files.find((file) => {
+  const exactMatch = files.find((file) => {
     const base = path.basename(file);
-    return base === sessionId || base === `${normalized}.jsonl` || base.includes(normalized);
+    return base === sessionId || base === `${normalized}.jsonl`;
   });
+  const fuzzyMatch = files.find((file) => path.basename(file).includes(normalized));
+  const matched = exactMatch ?? fuzzyMatch;
 
   if (!matched) {
     throw new Error(`Could not resolve sessionId '${sessionId}' under ${resolveProjectPath(projectPath)}`);
