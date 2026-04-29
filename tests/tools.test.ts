@@ -181,13 +181,96 @@ describe('get_cost_forecast', () => {
     expect(result.baselineDailyCostUsd).toBeGreaterThan(0);
     expect(result.projectedTotalUsd).toBeGreaterThan(0);
     expect(result.projectedMonthlyUsd).toBeGreaterThan(0);
-    expect(result.method).toBe('linear-average-rc1');
+    expect(result.method).toBe('recency-weighted-average-rc2');
     expect(result._meta).toEqual({});
 
     const toolResult = await server.handlers.get('get_cost_forecast')!({ projectPath, lookbackDays: 7, forecastDays: 14 });
     const payload = toolResult.structuredContent as Record<string, unknown>;
     expect(payload._meta).toEqual({});
-    expect(payload.method).toBe('linear-average-rc1');
+    expect(payload.method).toBe('recency-weighted-average-rc2');
+  });
+
+  it('weights recent populated days above the flat average on richer multi-day history', () => {
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-forecast-recency-'));
+    const now = new Date('2026-04-29T16:00:00.000Z');
+    const day1 = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const day2 = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+    const day3 = now;
+
+    writeSessionLog(path.join(projectPath, 'day1.jsonl'), [
+      {
+        type: 'assistant',
+        uuid: 'day1',
+        model: 'gpt-5.5',
+        usage: { input_tokens: 1000, output_tokens: 100 },
+        message: { content: [] },
+      },
+    ]);
+    writeSessionLog(path.join(projectPath, 'day2.jsonl'), [
+      {
+        type: 'assistant',
+        uuid: 'day2',
+        model: 'gpt-5.5',
+        usage: { input_tokens: 6000, output_tokens: 600 },
+        message: { content: [] },
+      },
+    ]);
+    writeSessionLog(path.join(projectPath, 'day3.jsonl'), [
+      {
+        type: 'assistant',
+        uuid: 'day3',
+        model: 'gpt-5.5',
+        usage: { input_tokens: 12000, output_tokens: 1200 },
+        message: { content: [] },
+      },
+    ]);
+    utimesSync(path.join(projectPath, 'day1.jsonl'), day1, day1);
+    utimesSync(path.join(projectPath, 'day2.jsonl'), day2, day2);
+    utimesSync(path.join(projectPath, 'day3.jsonl'), day3, day3);
+
+    const trend = getCostTrend({ projectPath, days: 7 });
+    const flatAverage = Number((trend.totalCostUsd / trend.daily.length).toFixed(6));
+    const forecast = getCostForecast({ projectPath, lookbackDays: 7, forecastDays: 14 });
+
+    expect(trend.daily).toHaveLength(3);
+    expect(forecast.method).toBe('recency-weighted-average-rc2');
+    expect(forecast.baselineDailyCostUsd).toBeGreaterThan(flatAverage);
+    expect(forecast.projectedTotalUsd).toBeGreaterThan(Number((flatAverage * 14).toFixed(2)));
+    expect(forecast.confidence).toBe('medium');
+  });
+
+  it('stays low-confidence with sparse history even when recent days are weighted', () => {
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-forecast-sparse-'));
+    const now = new Date('2026-04-29T16:00:00.000Z');
+    const yesterday = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+
+    writeSessionLog(path.join(projectPath, 'day1.jsonl'), [
+      {
+        type: 'assistant',
+        uuid: 'sparse1',
+        model: 'gpt-5.5',
+        usage: { input_tokens: 2000, output_tokens: 200 },
+        message: { content: [] },
+      },
+    ]);
+    writeSessionLog(path.join(projectPath, 'day2.jsonl'), [
+      {
+        type: 'assistant',
+        uuid: 'sparse2',
+        model: 'gpt-5.5',
+        usage: { input_tokens: 8000, output_tokens: 800 },
+        message: { content: [] },
+      },
+    ]);
+    utimesSync(path.join(projectPath, 'day1.jsonl'), yesterday, yesterday);
+    utimesSync(path.join(projectPath, 'day2.jsonl'), now, now);
+
+    const forecast = getCostForecast({ projectPath, lookbackDays: 7, forecastDays: 30 });
+
+    expect(forecast.method).toBe('recency-weighted-average-rc2');
+    expect(forecast.baselineDailyCostUsd).toBeGreaterThan(0);
+    expect(forecast.confidence).toBe('low');
+    expect(forecast.assumptions.some((item) => item.includes('Only 2 day(s)'))).toBe(true);
   });
 
   it('keeps _meta and uses the local telemetry client only when telemetry is opted in', () => {

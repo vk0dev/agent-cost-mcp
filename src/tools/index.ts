@@ -159,7 +159,7 @@ const costForecastOutputSchema = z.object({
   baselineDailyCostUsd: z.number().nonnegative(),
   projectedTotalUsd: z.number().nonnegative(),
   projectedMonthlyUsd: z.number().nonnegative(),
-  method: z.enum(['linear-average-rc1']),
+  method: z.enum(['recency-weighted-average-rc2']),
   confidence: z.enum(['low', 'medium']),
   assumptions: z.array(z.string()),
   _meta: z.record(z.string(), z.unknown()).optional(),
@@ -576,13 +576,19 @@ export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>
 
   const projectPath = resolveProjectPath(input.projectPath);
   const observedDays = trend ? trend.daily.length : 0;
-  const baselineDailyCostUsd = !trend || observedDays === 0 ? 0 : Number((trend.totalCostUsd / observedDays).toFixed(6));
+  const weightedBaseline = !trend || observedDays === 0
+    ? 0
+    : trend.daily.reduce((sum, day, index, days) => {
+        const weight = index + 1;
+        return sum + (day.costUsd * weight);
+      }, 0) / trend.daily.reduce((sum, _day, index) => sum + index + 1, 0);
+  const baselineDailyCostUsd = Number(weightedBaseline.toFixed(6));
   const projectedTotalUsd = Number((baselineDailyCostUsd * input.forecastDays).toFixed(2));
   const projectedMonthlyUsd = Number((baselineDailyCostUsd * 30).toFixed(2));
   const confidence = observedDays >= 3 ? 'medium' : 'low';
   const assumptions = [
-    'Forecast uses the observed average daily cost across the local lookback window.',
-    'rc.1 keeps forecasting linear and local-first; seasonal weighting is deferred until a later release.',
+    'Forecast uses a deterministic recency-weighted daily average across the local lookback window.',
+    'rc.2 remains non-seasonal and local-first; seasonal modeling is intentionally deferred.',
   ];
   if (observedDays === 0) {
     assumptions.push('No recent daily data was available, so the forecast falls back to zero baseline.');
@@ -597,7 +603,7 @@ export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>
     baselineDailyCostUsd,
     projectedTotalUsd,
     projectedMonthlyUsd,
-    method: 'linear-average-rc1',
+    method: 'recency-weighted-average-rc2',
     confidence,
     assumptions,
     _meta: {},
