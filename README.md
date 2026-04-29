@@ -116,7 +116,14 @@ Open the Cline MCP settings (click the MCP Servers icon → **Configure**) and a
 
 ### Verify it works
 
-In any client, ask: *"What tools does agent-cost expose?"* — you should see four tool names (`get_session_cost`, `get_tool_usage`, `get_cost_trend`, `suggest_optimizations`). If nothing shows up, see the [FAQ](#faq).
+In any client, ask: *"What tools does agent-cost expose?"* — you should see eleven tool names grouped roughly like this:
+
+- cost queries: `get_session_cost`, `get_tool_usage`, `get_cost_trend`, `get_subagent_tree`
+- optimization analytics: `get_tool_roi`, `suggest_optimizations`, `detect_cost_anomalies`
+- predictive: `get_cost_forecast`, `estimate_run_cost`
+- configuration: `configure_budget`, `set_monitor_webhook`
+
+If nothing shows up, see the [FAQ](#faq).
 
 ## Tools
 
@@ -263,16 +270,18 @@ Agent: [calls suggest_optimizations]
                                        └────────┬────────┘
                                                 │
                                                 ▼
-                                       ┌─────────────────┐
-  Agent tool call (stdio MCP)  ──────▶ │  MCP server     │ ─── JSON response
-                                       │  (4 tools)      │
-                                       └─────────────────┘
+                                       ┌──────────────────────────┐
+  Agent tool call (stdio MCP)  ──────▶ │  MCP server              │ ─── JSON response
+                                       │  (11 tools across query, │
+                                       │   analytics, forecast,   │
+                                       │   and config surfaces)   │
+                                       └──────────────────────────┘
 ```
 
 - **Parser** reads per-turn usage fields (`input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`) directly from the raw JSONL lines produced by Claude Code.
-- **Pricing table** (`src/pricing.ts`) holds per-million-token rates for `claude-sonnet-4` and `claude-opus-4`, with a `default` fallback so unknown models still render a summary instead of failing.
-- **MCP server** exposes four typed tools over stdio, returning both human-readable text and Zod-validated `structuredContent`.
-- **Zero network egress.** No telemetry, no API key, no cloud sync. Delete the package and nothing remains.
+- **Pricing table** (`src/pricing.ts`) holds per-million-token rates for Claude models, with a `default` fallback so unknown models still render a summary instead of failing.
+- **MCP server** exposes eleven typed tools over stdio, covering local cost queries, per-tool/session analytics, anomaly detection, pre-run forecasting, budget caps, and webhook alert configuration.
+- **Zero network egress by default.** No telemetry, no API key, no cloud sync. The only optional outbound surface is `set_monitor_webhook`, which is explicit opt-in configuration for alert delivery.
 
 ## Comparison vs alternatives
 
