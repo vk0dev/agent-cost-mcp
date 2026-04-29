@@ -1,3 +1,8 @@
+## [2.0.0-beta.7] — 2026-04-29
+
+### Fixed
+- Triggered a no-op follow-up beta release after the CI OIDC registry publish path landed so future tag pushes can refresh the Official MCP Registry listing without local device-flow OAuth.
+
 ## [2.0.0-beta.6] — 2026-04-27
 
 ### Fixed
