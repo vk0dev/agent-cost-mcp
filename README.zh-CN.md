@@ -111,18 +111,64 @@ claude mcp add --transport stdio agent-cost -- npx -y @vk0/agent-cost-mcp
 
 ### 验证安装
 
-在任一客户端里问:*"agent-cost 暴露了哪些工具?"* —— 你应该看到四个工具名(`get_session_cost`、`get_tool_usage`、`get_cost_trend`、`suggest_optimizations`)。如果没看到,参考 [FAQ](#faq)。
+在任一客户端里问:*"agent-cost 暴露了哪些工具?"* —— 你应该看到这 11 个工具名:
+
+- `get_session_cost`
+- `get_tool_usage`
+- `get_cost_trend`
+- `get_subagent_tree`
+- `get_tool_roi`
+- `suggest_optimizations`
+- `detect_cost_anomalies`
+- `get_cost_forecast`
+- `estimate_run_cost`
+- `configure_budget`
+- `set_monitor_webhook`
+
+如果没看到,参考 [FAQ](#faq)。
+
+## Docs / How-to
+
+如果你想要更偏实操的操作指南,从这里开始:
+
+- [5-minute setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
+- [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
+- [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
 ## 工具
 
-四个 MCP 工具,全部基于本地 JSONL 会话日志:
+11 个 MCP 工具,全部基于本地 JSONL 会话日志:
 
-| 工具 | 用途 |
-|------|-----|
-| **`get_session_cost`** | 解析一次 Claude Code 会话,返回 token 总量(input、output、cache-read、cache-creation)、轮次数量,以及估算的 USD 成本。 |
-| **`get_tool_usage`** | 在一次会话或经过过滤的项目日志目录中汇总工具调用,报告每个工具的调用次数和上下文占比。 |
-| **`get_cost_trend`** | 将本地项目路径下的日志聚合成按天的成本趋势,包含每天的会话数、token 数和估算支出。 |
-| **`suggest_optimizations`** | 从解析后的会话日志生成轻量级优化建议(cache-read 比例、被放弃的调用、最重的轮次等)。 |
+**Cost queries (read-only):**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_session_cost`** | Parse one session and return token totals + estimated USD cost. |
+| **`get_tool_usage`** | Aggregate tool invocations across a session or project path to spot context-heavy patterns. |
+| **`get_cost_trend`** | Roll logs into a day-by-day cost trend. |
+| **`get_subagent_tree`** | Show a bounded parent-plus-subagent session tree for cost attribution. |
+
+**Optimization analytics:**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_tool_roi`** | Rank tools by a bounded ROI heuristic (context share vs linked results). |
+| **`suggest_optimizations`** | Lightweight optimization suggestions from one parsed session. |
+| **`detect_cost_anomalies`** | Flag unusually high/low daily spikes and runaway-loop signatures. |
+
+**Predictive (pre-spend):**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_cost_forecast`** | Bounded local forecast from recent daily data. |
+| **`estimate_run_cost`** | Estimate cost for a planned run (low/expected/high). |
+
+**Configuration (write):**
+
+| Tool | What it does |
+|------|-------------|
+| **`configure_budget`** | Set daily/per-session caps and alert thresholds (local state). |
+| **`set_monitor_webhook`** | Configure a signed webhook target for monitor events. |
 
 <details>
 <summary><strong>示例:<code>get_session_cost</code> 输出</strong></summary>
@@ -235,7 +281,7 @@ Agent:    [调用 suggest_optimizations]
                                                  ▼
                                         ┌─────────────────┐
   Agent 调用(stdio MCP)       ──────▶  │  MCP 服务器      │ ─── JSON 响应
-                                        │  (4 个工具)      │
+                                        │  (11 个工具)     │
                                         └─────────────────┘
 ```
 

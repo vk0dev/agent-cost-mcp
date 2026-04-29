@@ -51,7 +51,7 @@ Añade la entrada `agent-cost` bajo `mcpServers`:
 }
 ```
 
-Cierra Claude Desktop por completo y reinícialo. El indicador MCP en la esquina inferior derecha del campo de chat debería mostrar cuatro nuevas herramientas.
+Cierra Claude Desktop por completo y reinícialo. El indicador MCP en la esquina inferior derecha del campo de chat debería mostrar 11 herramientas.
 
 ### Claude Code
 
@@ -111,18 +111,64 @@ Abre la configuración MCP de Cline (icono de MCP Servers → **Configure**) y a
 
 ### Verifica que funciona
 
-En cualquier cliente, pregunta: *«¿Qué herramientas expone agent-cost?»* — deberías ver cuatro nombres (`get_session_cost`, `get_tool_usage`, `get_cost_trend`, `suggest_optimizations`). Si no aparece nada, consulta el [FAQ](#faq).
+En cualquier cliente, pregunta: *«¿Qué herramientas expone agent-cost?»* — deberías ver estos 11 nombres:
+
+- `get_session_cost`
+- `get_tool_usage`
+- `get_cost_trend`
+- `get_subagent_tree`
+- `get_tool_roi`
+- `suggest_optimizations`
+- `detect_cost_anomalies`
+- `get_cost_forecast`
+- `estimate_run_cost`
+- `configure_budget`
+- `set_monitor_webhook`
+
+Si no aparece nada, consulta el [FAQ](#faq).
+
+## Docs / How-to
+
+Si quieres flujos prácticos en lugar del reference completo, empieza aquí:
+
+- [5-minute setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
+- [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
+- [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
 ## Herramientas
 
-Cuatro herramientas MCP, todas operando sobre logs JSONL locales:
+Once herramientas MCP, todas operando sobre logs JSONL locales:
 
-| Herramienta | Qué hace |
-|-------------|---------|
-| **`get_session_cost`** | Analiza una sesión de Claude Code y devuelve totales de tokens (input, output, cache-read, cache-creation), número de turnos y coste estimado en USD. |
-| **`get_tool_usage`** | Agrega invocaciones de herramientas sobre una sesión o un directorio filtrado de logs de proyecto, reportando llamadas por herramienta y porcentaje del contexto. |
-| **`get_cost_trend`** | Consolida los logs en una tendencia diaria de costes para una ruta local de proyecto, con sesiones, tokens y gasto estimado por día. |
-| **`suggest_optimizations`** | Genera sugerencias ligeras de optimización (ratio de cache-reads, llamadas abandonadas, turnos más pesados) a partir de un log analizado. |
+**Cost queries (read-only):**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_session_cost`** | Parse one session and return token totals + estimated USD cost. |
+| **`get_tool_usage`** | Aggregate tool invocations across a session or project path to spot context-heavy patterns. |
+| **`get_cost_trend`** | Roll logs into a day-by-day cost trend. |
+| **`get_subagent_tree`** | Show a bounded parent-plus-subagent session tree for cost attribution. |
+
+**Optimization analytics:**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_tool_roi`** | Rank tools by a bounded ROI heuristic (context share vs linked results). |
+| **`suggest_optimizations`** | Lightweight optimization suggestions from one parsed session. |
+| **`detect_cost_anomalies`** | Flag unusually high/low daily spikes and runaway-loop signatures. |
+
+**Predictive (pre-spend):**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_cost_forecast`** | Bounded local forecast from recent daily data. |
+| **`estimate_run_cost`** | Estimate cost for a planned run (low/expected/high). |
+
+**Configuration (write):**
+
+| Tool | What it does |
+|------|-------------|
+| **`configure_budget`** | Set daily/per-session caps and alert thresholds (local state). |
+| **`set_monitor_webhook`** | Configure a signed webhook target for monitor events. |
 
 <details>
 <summary><strong>Ejemplo: salida de <code>get_session_cost</code></strong></summary>
@@ -236,7 +282,7 @@ Agente: [llama a suggest_optimizations]
                                                   ▼
                                          ┌─────────────────┐
   Llamada del agente (stdio MCP) ────▶   │  Servidor MCP   │ ─── respuesta JSON
-                                         │  (4 herramientas)│
+                                         │  (11 herramientas)│
                                          └─────────────────┘
 ```
 

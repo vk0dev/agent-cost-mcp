@@ -111,18 +111,64 @@ claude mcp add --transport stdio agent-cost -- npx -y @vk0/agent-cost-mcp
 
 ### Проверка
 
-В любом клиенте спросите: *«Какие инструменты предоставляет agent-cost?»* — вы должны увидеть четыре инструмента (`get_session_cost`, `get_tool_usage`, `get_cost_trend`, `suggest_optimizations`). Если ничего не появилось — см. [FAQ](#faq).
+В любом клиенте спросите: *«Какие инструменты предоставляет agent-cost?»* — вы должны увидеть 11 инструментов:
+
+- `get_session_cost`
+- `get_tool_usage`
+- `get_cost_trend`
+- `get_subagent_tree`
+- `get_tool_roi`
+- `suggest_optimizations`
+- `detect_cost_anomalies`
+- `get_cost_forecast`
+- `estimate_run_cost`
+- `configure_budget`
+- `set_monitor_webhook`
+
+Если ничего не появилось — см. [FAQ](#faq).
+
+## Документация и how-to
+
+Если нужны практические операционные сценарии, начните здесь:
+
+- [5-minute setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
+- [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
+- [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
 ## Инструменты
 
-Четыре MCP-инструмента, все работают с локальными JSONL-логами:
+11 MCP-инструментов, все работают с локальными JSONL-логами:
 
-| Инструмент | Что делает |
-|------------|-----------|
-| **`get_session_cost`** | Разбирает одну сессию Claude Code и возвращает суммы токенов (input, output, cache-read, cache-creation), количество поворотов и оценочную стоимость в USD. |
-| **`get_tool_usage`** | Агрегирует вызовы инструментов по одной сессии или по отфильтрованной папке с логами, показывая количество вызовов и долю в контексте. |
-| **`get_cost_trend`** | Сворачивает логи в дневную динамику стоимости по локальному пути проекта: сессии, токены и расход за день. |
-| **`suggest_optimizations`** | Генерирует лёгкие подсказки по оптимизации (доля cache-reads, брошенные вызовы, самые тяжёлые повороты) из разобранного лога. |
+**Cost queries (read-only):**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_session_cost`** | Parse one session and return token totals + estimated USD cost. |
+| **`get_tool_usage`** | Aggregate tool invocations across a session or project path to spot context-heavy patterns. |
+| **`get_cost_trend`** | Roll logs into a day-by-day cost trend. |
+| **`get_subagent_tree`** | Show a bounded parent-plus-subagent session tree for cost attribution. |
+
+**Optimization analytics:**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_tool_roi`** | Rank tools by a bounded ROI heuristic (context share vs linked results). |
+| **`suggest_optimizations`** | Lightweight optimization suggestions from one parsed session. |
+| **`detect_cost_anomalies`** | Flag unusually high/low daily spikes and runaway-loop signatures. |
+
+**Predictive (pre-spend):**
+
+| Tool | What it does |
+|------|-------------|
+| **`get_cost_forecast`** | Bounded local forecast from recent daily data. |
+| **`estimate_run_cost`** | Estimate cost for a planned run (low/expected/high). |
+
+**Configuration (write):**
+
+| Tool | What it does |
+|------|-------------|
+| **`configure_budget`** | Set daily/per-session caps and alert thresholds (local state). |
+| **`set_monitor_webhook`** | Configure a signed webhook target for monitor events. |
 
 <details>
 <summary><strong>Пример: вывод <code>get_session_cost</code></strong></summary>
@@ -235,7 +281,7 @@ claude mcp add --transport stdio agent-cost -- npx -y @vk0/agent-cost-mcp
                                                 ▼
                                        ┌─────────────────┐
   Вызов из агента (stdio MCP)  ──────▶ │  MCP-сервер     │ ─── JSON-ответ
-                                       │  (4 инструмента)│
+                                       │  (11 инструментов)│
                                        └─────────────────┘
 ```
 
