@@ -356,6 +356,22 @@
       </section>
 
       <section>
+        <h2>Claude Code built-in cost tools vs agent-cost-mcp</h2>
+        <p style="color: var(--text-muted)">
+          Claude Code already has useful native cost visibility. This MCP is for
+          the next layer of local analysis.
+        </p>
+        <ul class="why-list">
+          <li><strong>Use built-in <code>/cost</code></strong> when a quick current-session check is enough.</li>
+          <li><strong>Use agent-cost-mcp</strong> when you need <code>get_tool_usage</code>, <code>get_subagent_tree</code>, <code>get_cost_forecast</code>, budget automation, or webhook alerts.</li>
+          <li><strong>Use both together</strong> when you want native in-session visibility plus MCP-callable follow-up analysis.</li>
+        </ul>
+        <p style="color: var(--text-muted)">
+          This is not invoice truth, org-wide billing, or live runtime introspection. It is a local MCP surface over Claude Code session logs.
+        </p>
+      </section>
+
+      <section>
         <h2>Install</h2>
         <p style="color: var(--text-muted)">
           Pick your client. Everything runs through <code>npx</code> — nothing

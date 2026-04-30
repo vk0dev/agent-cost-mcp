@@ -137,6 +137,30 @@ At the time of this README update, Glama and mcp.so are **not** listed here as l
 
 If you are discovering this package for the first time, the preferred path today is npm for installation and Smithery for marketplace-style browsing.
 
+## Claude Code built-in `/cost` vs `@vk0/agent-cost-mcp`
+
+Claude Code already gives you useful native cost visibility. `@vk0/agent-cost-mcp` is for the next layer of analysis.
+
+### Use built-in Claude Code `/cost` when
+
+- you want a quick answer for the current session
+- you only need native statusline or local session spend visibility
+- you are checking budget flags during an active run
+
+### Use `@vk0/agent-cost-mcp` when
+
+- you want per-tool analysis with `get_tool_usage`
+- you need parent/subagent attribution with `get_subagent_tree`
+- you want local forward-looking estimates from `get_cost_forecast`
+- you need agent-readable guardrails with `configure_budget`
+- you want alert routing via webhook notifications
+
+### Best together
+
+Use Claude Code built-ins for quick in-session visibility, then use `@vk0/agent-cost-mcp` when the next question is: *which tool caused this, which branch burned the budget, what changed over time, and what should the agent do next?*
+
+This package does **not** replace invoices, org-wide billing systems, or live runtime introspection. It is a local MCP surface for structured cost analysis from Claude Code session logs.
+
 ## Docs and how-to guides
 
 If you want concrete operator workflows instead of the full reference, start here:
