@@ -1,3 +1,8 @@
+## [2.0.0-beta.9] — 2026-04-30
+
+### Added
+- Added a GitHub OIDC workflow-dispatch recovery path to republish `server.json` to the Official MCP Registry without rerunning npm release semantics.
+
 ## [2.0.0-beta.8] — 2026-04-29
 
 ### Added
