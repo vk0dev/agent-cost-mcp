@@ -438,6 +438,16 @@ npm run smoke    # end-to-end MCP client smoke test
 
 Stack: TypeScript, `@modelcontextprotocol/sdk`, Zod, Vitest.
 
+### Official MCP Registry recovery path
+
+If npm/package metadata is already correct but the Official MCP Registry listing needs a bounded re-publish, trigger the dedicated GitHub Actions workflow instead of creating a new tag or rerunning the full release flow:
+
+```bash
+gh workflow run registry-republish.yml --repo vk0dev/agent-cost-mcp
+```
+
+This workflow republishes `server.json` to the Official MCP Registry via GitHub OIDC only. It does not publish to npm and does not create a new release.
+
 ## Changelog
 
 See [CHANGELOG.md](./CHANGELOG.md). This project follows [semantic versioning](https://semver.org) from v1.0.0 onwards.
