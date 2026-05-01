@@ -1,6 +1,6 @@
-# 5-minute setup with Claude Desktop
+# Quick setup with Claude Desktop
 
-This guide gets `@vk0/agent-cost-mcp` running in Claude Desktop and gives you one useful first prompt to confirm it is working.
+This guide gets `@vk0/agent-cost-mcp` running in Claude Desktop and gives you one useful first prompt to confirm it is working. Exact setup time depends on whether Claude Desktop, Node.js, and your local Claude Code logs are already in place.
 
 ## Before you start
 
