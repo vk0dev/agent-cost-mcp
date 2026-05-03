@@ -6,3 +6,9 @@ dist/
 
 # npm pack artifacts
 *.tgz
+
+# coverage output (vitest)
+coverage/
+
+# openclaw workspace artifacts (research/specs)
+business/
