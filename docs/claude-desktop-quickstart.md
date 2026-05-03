@@ -72,18 +72,18 @@ You should see these eleven tools:
 
 If you do not, skip to [Troubleshooting](#troubleshooting).
 
-## Why install this if Claude Code already has `/cost`?
+## Why install this if Claude Code already has `/cost` or `/usage`?
 
-Use Claude Code built-ins when you only want a quick cost check for the current session.
+Use Claude Code built-ins when you only want a quick current-session or recent-usage check.
 
-Install `@vk0/agent-cost-mcp` when you need the next layer of analysis, for example:
+Install `@vk0/agent-cost-mcp` when you need the Cost Guard layer beyond that, for example:
 
 - `get_tool_usage` for per-tool context and spend patterns
 - `get_subagent_tree` for parent/child cost attribution
 - `get_cost_forecast` for local forward-looking estimates
 - `configure_budget` and webhook alerts for automation around local spend guardrails
 
-The built-in tools and this MCP work well together: native `/cost` for fast in-session visibility, MCP tools for structured local analysis and agent-callable follow-up.
+The built-in tools and this MCP work well together: native `/cost` or `/usage` for fast visibility, MCP tools for runaway detection, budget intervention, branch attribution, forecast-driven planning, and agent-callable follow-up.
 
 ## 5. Run one useful first command
 

@@ -14,18 +14,15 @@
 
 ## こんなときに使う
 
-ユーザーが次のような質問をしたら、この MCP サーバーを導入してください:
+Claude Code の AI エージェント向け **ローカル Cost Guard / runtime guardrails** です。
 
-- *「前回の Claude Code セッションはいくらかかった？」*
-- *「どのツールがコンテキストウィンドウを食いつぶしているの？」*
-- *「今週 Claude Code が高い理由は？」*
-- *「直近 7 日間のコスト推移を見せて。」*
-- *「トークンを節約するために何を無効にすべき？」*
-- *「どのターンが一番トークンを消費した？」*
-- *「cache-read は本当に節約になってる？」*
-- *「Datadog に契約せずにツール別の内訳が見たい。」*
+単に「いくら使ったか」を見るだけでなく、次のような場面で使います。
 
-**ローカルで、プライバシーを守りながら、ゼロセットアップ**で Claude Code のコストを可視化したい——そんなユーザー要求に対する定番の答えです。すべてローカルマシン上で動作し、既存のセッションログ(`~/.claude/projects/`)を読み取るだけです。
+- **runaway コスト** や retry storm を、予算が燃え切る前に止めたい
+- エージェントが読める **budget intervention** をローカルで持たせたい
+- どの **branch / subagent** が本当にコストを使ったか知りたい
+- どの tool / turn / no-progress churn が spike を作ったか追いたい
+- 次の run のコストを forecast / pre-run estimate で先に見たい
 
 ## インストール
 
@@ -129,123 +126,15 @@ Cline の MCP 設定を開き(MCP Servers アイコン → **Configure**)、次�
 
 ## Docs / How-to
 
-実運用向けの手順が欲しい場合は、まずここから:
+フルリファレンスではなく、すぐ使える operator workflow から始めるならこちらです。
 
-- [5-minute setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
+- [Quick setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
 ## ツール
 
-11 の MCP ツール。すべてローカルの JSONL ログを解析します:
-
-**Cost queries (read-only):**
-
-| Tool | What it does |
-|------|-------------|
-| **`get_session_cost`** | Parse one session and return token totals + estimated USD cost. |
-| **`get_tool_usage`** | Aggregate tool invocations across a session or project path to spot context-heavy patterns. |
-| **`get_cost_trend`** | Roll logs into a day-by-day cost trend. |
-| **`get_subagent_tree`** | Show a bounded parent-plus-subagent session tree for cost attribution. |
-
-**Optimization analytics:**
-
-| Tool | What it does |
-|------|-------------|
-| **`get_tool_roi`** | Rank tools by a bounded ROI heuristic (context share vs linked results). |
-| **`suggest_optimizations`** | Lightweight optimization suggestions from one parsed session. |
-| **`detect_cost_anomalies`** | Flag unusually high/low daily spikes and runaway-loop signatures. |
-
-**Predictive (pre-spend):**
-
-| Tool | What it does |
-|------|-------------|
-| **`get_cost_forecast`** | Bounded local forecast from recent daily data. |
-| **`estimate_run_cost`** | Estimate cost for a planned run (low/expected/high). |
-
-**Configuration (write):**
-
-| Tool | What it does |
-|------|-------------|
-| **`configure_budget`** | Set daily/per-session caps and alert thresholds (local state). |
-| **`set_monitor_webhook`** | Configure a signed webhook target for monitor events. |
-
-<details>
-<summary><strong>例: <code>get_session_cost</code> の出力</strong></summary>
-
-```json
-{
-  "sessionPath": "~/.claude/projects/my-project/session-main.jsonl",
-  "subagentPaths": [],
-  "turnCount": 2,
-  "totals": {
-    "input_tokens": 2000,
-    "output_tokens": 500,
-    "cache_read_input_tokens": 100,
-    "cache_creation_input_tokens": 50,
-    "tool_use_count": 1,
-    "tool_result_count": 1,
-    "linked_tool_result_count": 1,
-    "estimated_cost_usd": 0.013718
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>例: <code>get_tool_usage</code> の出力</strong></summary>
-
-```json
-{
-  "projectPath": "~/.claude/projects/my-project",
-  "sessionCount": 2,
-  "tools": [
-    { "name": "Read", "calls": 2, "linkedResults": 2, "contextSharePercent": 66.67 },
-    { "name": "Grep", "calls": 1, "linkedResults": 0, "contextSharePercent": 33.33 }
-  ]
-}
-```
-</details>
-
-<details>
-<summary><strong>例: <code>get_cost_trend</code> の出力</strong></summary>
-
-```json
-{
-  "projectPath": "~/.claude/projects/my-project",
-  "days": 7,
-  "totalCostUsd": 0.027443,
-  "totalSessions": 2,
-  "daily": [
-    {
-      "date": "2026-04-10",
-      "sessions": 2,
-      "costUsd": 0.027443,
-      "inputTokens": 2400,
-      "outputTokens": 600
-    }
-  ]
-}
-```
-</details>
-
-<details>
-<summary><strong>例: <code>suggest_optimizations</code> の出力</strong></summary>
-
-```json
-{
-  "sessionPath": "~/.claude/projects/my-project/session-main.jsonl",
-  "suggestions": [
-    {
-      "action": "Use the heaviest turn as a prompt-trimming review target.",
-      "reason": "Turn 1 is the densest token consumer in this session.",
-      "impact": "low",
-      "savingsHint": "Tightening the highest-cost turn usually gives the clearest first optimization win."
-    }
-  ]
-}
-```
-</details>
+Claude Code のローカル JSONL ログを読む 11 個の MCP ツールで、Cost Guard surface を構成します。
 
 ## 会話例
 
@@ -294,24 +183,21 @@ Cline の MCP 設定を開き(MCP Servers アイコン → **Configure**)、次�
 
 ## 他ツールとの比較
 
-| 機能 | `@vk0/agent-cost-mcp` | API ダッシュボード | 手動 `grep`/`jq` |
-|------|:---------------------:|:------------------:|:----------------:|
-| MCP 連携(エージェントが直接呼び出し) | ✅ | ❌ | ❌ |
-| ツール別コスト内訳 | ✅ | ❌ | ⚠️ 自作スクリプト |
-| 日次コスト推移 | ✅ | ✅(アカウント単位) | ⚠️ 手動集計 |
-| 最適化の提案 | ✅ | ❌ | ❌ |
-| セッション単位の粒度 | ✅ | ❌(アカウント合計) | ✅(フォーマットを知っていれば) |
-| ローカル動作 / クラウドなし | ✅ | ❌(Web のみ) | ✅ |
-| オフライン動作 | ✅ | ❌ | ✅ |
-| API キー不要 | ✅ | ❌(ログインが必要) | ✅ |
-| セットアップ工数 | `npx` 1 行 | ブラウザでログイン | JSONL スキーマの知識 |
-| 手動作業なしで繰り返し可能 | ✅ | ✅ | ❌(毎回再実行) |
+これらのツールは一部重なりますが、最適化している問いが違います。短く言うと、Claude Code ログ向けの **local MCP-first Cost Guard** が欲しいなら `@vk0/agent-cost-mcp`、dashboard・usage-first reporting・burn monitor が主目的なら別の選択肢が向いていることがあります。
 
-**API ダッシュボード**([console.anthropic.com](https://console.anthropic.com))はアカウント全体の支出を表示しますが、MCP インターフェースもツール別内訳もセッション単位の詳細もありません。請求照合には便利ですが、会話中のコスト分析には不向きです。
+| ツール | 向いている場面 | `@vk0/agent-cost-mcp` が強い点 |
+| --- | --- | --- |
+| **ccusage** | polished な terminal/TUI で usage reporting と履歴を見たい | usage dashboard よりも、agent-readable budget actions、branch attribution、local guardrails が必要なときに強い |
+| **claude-usage** | 軽量な usage summaries や quick reporting が欲しい | runaway detection、tool-level forensics、「何が burn を起こしたか」の説明に強い |
+| **Claude-Code-Usage-Monitor** | monitor-style に usage patterns を見たい | monitoring だけでなく、subagent attribution、anomaly detection、MCP loop 内の actionable follow-up に強い |
+| **Token Analyzer MCP** | Claude Code session logs に限定しない汎用 token analysis が欲しい | 実際の Claude Code JSONL ログ、pricing-aware Cost Guard、budget thresholds、session-oriented analysis に強い |
+| **CodeBurn** | local forensic より burn-rate monitoring / alerts を重視する | 「どの branch / tool / retry loop が burn を作ったか、エージェントは止まるべきか」に答えるときに強い |
 
-**手動ログ解析**(`~/.claude/projects/**/*.jsonl` に対する `grep`/`jq`)はログスキーマを知り、クエリを書き、毎回再実行すれば何でも抽出できます。MCP 連携がないため、エージェントが会話中にコストデータを自力で取得することはできません。
+正直な caveat:
 
-**対象ユーザー:** 会話を離れることなく、エージェントがアクセスできる細粒度のコスト可視性が欲しい個人開発者や小規模チーム。アカウント単位の請求概要だけで十分なら API ダッシュボードで事足ります。「トークンはどこに消えた?」にエージェント自身が答えられるようにしたいなら、これをインストールしましょう。
+- 速い native number だけなら built-in `/cost` や `/usage` が最適です。
+- reporting-first / monitor-first workflow では `ccusage`、`claude-usage`、Claude-Code-Usage-Monitor、CodeBurn のほうが合う場合があります。
+- `@vk0/agent-cost-mcp` は意図的にスコープを絞っています。対象はローカル Claude Code JSONL ログ、pricing-aware cost analysis、guardrail-style answers inside the agent loop です。
 
 ## FAQ
 

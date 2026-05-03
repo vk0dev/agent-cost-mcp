@@ -342,15 +342,15 @@
           Use this MCP server when the user asks any of:
         </p>
         <ul class="why-list">
-          <li>"How much did my last Claude Code session cost?"</li>
-          <li>"Which tools are eating my context window?"</li>
-          <li>"Why is Claude Code expensive this week?"</li>
+          <li>"Which tool or branch just went runaway?"</li>
+          <li>"Should this agent stop now or keep going?"</li>
+          <li>"Which subagent actually burned the budget?"</li>
           <li>"Show me the cost trend for the last 7 days."</li>
-          <li>"What should I disable to save tokens?"</li>
-          <li>"Are my cache reads actually saving me money?"</li>
+          <li>"Can I put a local budget cap on this workflow?"</li>
+          <li>"What is the likely cost of the next run before I start it?"</li>
           <li>
-            "Can I get a per-tool cost breakdown without signing up for
-            Datadog?"
+            "Can I get branch-level cost attribution and guardrails without a
+            hosted dashboard?"
           </li>
         </ul>
       </section>
@@ -362,9 +362,9 @@
           the next layer of local analysis.
         </p>
         <ul class="why-list">
-          <li><strong>Use built-in <code>/cost</code></strong> when a quick current-session check is enough.</li>
-          <li><strong>Use agent-cost-mcp</strong> when you need <code>get_tool_usage</code>, <code>get_subagent_tree</code>, <code>get_cost_forecast</code>, budget automation, or webhook alerts.</li>
-          <li><strong>Use both together</strong> when you want native in-session visibility plus MCP-callable follow-up analysis.</li>
+          <li><strong>Use built-in <code>/cost</code> or <code>/usage</code></strong> when a quick current-session or recent-usage check is enough.</li>
+          <li><strong>Use agent-cost-mcp</strong> when you need runaway detection, <code>get_subagent_tree</code>, <code>get_cost_forecast</code>, local budget caps, or webhook alerts.</li>
+          <li><strong>Use both together</strong> when you want native visibility first, then MCP-callable Cost Guard follow-up.</li>
         </ul>
         <p style="color: var(--text-muted)">
           This is not invoice truth, org-wide billing, or live runtime introspection. It is a local MCP surface over Claude Code session logs.

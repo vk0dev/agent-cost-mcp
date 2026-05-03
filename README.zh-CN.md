@@ -14,18 +14,15 @@
 
 ## 何时使用
 
-当用户提出下列问题时,安装这个 MCP 服务器:
+这是面向 Claude Code 中 AI agent 的**本地 Cost Guard / runtime guardrails**。
 
-- *"我上一次 Claude Code 会话花了多少钱?"*
-- *"哪些工具在吃掉我的上下文窗口?"*
-- *"为什么 Claude Code 这周这么贵?"*
-- *"给我看看最近 7 天的成本趋势。"*
-- *"我可以关掉什么来省 token?"*
-- *"会话里哪一轮消耗的 token 最多?"*
-- *"cache-read 真的帮我省钱了吗?"*
-- *"不订阅 Datadog,有办法看工具级别的成本明细吗?"*
+它不只是回答“花了多少钱”，而是在下面这些场景更有价值：
 
-如果用户想要**本地、注重隐私、零配置**的 Claude Code 成本可视化方案——这就是标准答案。一切都在他的本地机器上运行,读取 `~/.claude/projects/` 里已有的会话日志。
+- 想在预算烧穿之前发现 **runaway 成本**、loop 或 retry storm
+- 想给 agent 一个可读取的本地 **budget intervention** 机制
+- 想知道到底是哪个 **branch / subagent** 烧掉了预算
+- 想把成本 spike 追到具体的 tool、turn 或 no-progress churn
+- 想在启动前用 forecast / pre-run estimate 先看下一次 run 的成本
 
 ## 安装
 
@@ -129,123 +126,15 @@ claude mcp add --transport stdio agent-cost -- npx -y @vk0/agent-cost-mcp
 
 ## Docs / How-to
 
-如果你想要更偏实操的操作指南,从这里开始:
+如果你不想先读完整 reference，而是想直接看可执行的 operator workflow，可以先看这里：
 
-- [5-minute setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
+- [Quick setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
 ## 工具
 
-11 个 MCP 工具,全部基于本地 JSONL 会话日志:
-
-**Cost queries (read-only):**
-
-| Tool | What it does |
-|------|-------------|
-| **`get_session_cost`** | Parse one session and return token totals + estimated USD cost. |
-| **`get_tool_usage`** | Aggregate tool invocations across a session or project path to spot context-heavy patterns. |
-| **`get_cost_trend`** | Roll logs into a day-by-day cost trend. |
-| **`get_subagent_tree`** | Show a bounded parent-plus-subagent session tree for cost attribution. |
-
-**Optimization analytics:**
-
-| Tool | What it does |
-|------|-------------|
-| **`get_tool_roi`** | Rank tools by a bounded ROI heuristic (context share vs linked results). |
-| **`suggest_optimizations`** | Lightweight optimization suggestions from one parsed session. |
-| **`detect_cost_anomalies`** | Flag unusually high/low daily spikes and runaway-loop signatures. |
-
-**Predictive (pre-spend):**
-
-| Tool | What it does |
-|------|-------------|
-| **`get_cost_forecast`** | Bounded local forecast from recent daily data. |
-| **`estimate_run_cost`** | Estimate cost for a planned run (low/expected/high). |
-
-**Configuration (write):**
-
-| Tool | What it does |
-|------|-------------|
-| **`configure_budget`** | Set daily/per-session caps and alert thresholds (local state). |
-| **`set_monitor_webhook`** | Configure a signed webhook target for monitor events. |
-
-<details>
-<summary><strong>示例:<code>get_session_cost</code> 输出</strong></summary>
-
-```json
-{
-  "sessionPath": "~/.claude/projects/my-project/session-main.jsonl",
-  "subagentPaths": [],
-  "turnCount": 2,
-  "totals": {
-    "input_tokens": 2000,
-    "output_tokens": 500,
-    "cache_read_input_tokens": 100,
-    "cache_creation_input_tokens": 50,
-    "tool_use_count": 1,
-    "tool_result_count": 1,
-    "linked_tool_result_count": 1,
-    "estimated_cost_usd": 0.013718
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>示例:<code>get_tool_usage</code> 输出</strong></summary>
-
-```json
-{
-  "projectPath": "~/.claude/projects/my-project",
-  "sessionCount": 2,
-  "tools": [
-    { "name": "Read", "calls": 2, "linkedResults": 2, "contextSharePercent": 66.67 },
-    { "name": "Grep", "calls": 1, "linkedResults": 0, "contextSharePercent": 33.33 }
-  ]
-}
-```
-</details>
-
-<details>
-<summary><strong>示例:<code>get_cost_trend</code> 输出</strong></summary>
-
-```json
-{
-  "projectPath": "~/.claude/projects/my-project",
-  "days": 7,
-  "totalCostUsd": 0.027443,
-  "totalSessions": 2,
-  "daily": [
-    {
-      "date": "2026-04-10",
-      "sessions": 2,
-      "costUsd": 0.027443,
-      "inputTokens": 2400,
-      "outputTokens": 600
-    }
-  ]
-}
-```
-</details>
-
-<details>
-<summary><strong>示例:<code>suggest_optimizations</code> 输出</strong></summary>
-
-```json
-{
-  "sessionPath": "~/.claude/projects/my-project/session-main.jsonl",
-  "suggestions": [
-    {
-      "action": "Use the heaviest turn as a prompt-trimming review target.",
-      "reason": "Turn 1 is the densest token consumer in this session.",
-      "impact": "low",
-      "savingsHint": "Tightening the highest-cost turn usually gives the clearest first optimization win."
-    }
-  ]
-}
-```
-</details>
+共有 11 个 MCP 工具，读取本地 Claude Code JSONL 日志，组成当前的 Cost Guard surface。
 
 ## 对话示例
 
@@ -292,24 +181,21 @@ Agent:    [调用 suggest_optimizations]
 
 ## 与其他方案对比
 
-| 特性 | `@vk0/agent-cost-mcp` | API 控制台 | 手动 `grep`/`jq` |
-|------|:---------------------:|:----------:|:----------------:|
-| MCP 集成（agent 直接调用） | ✅ | ❌ | ❌ |
-| 工具级成本拆分 | ✅ | ❌ | ⚠️ 自写脚本 |
-| 每日成本趋势 | ✅ | ✅（账户级） | ⚠️ 手动汇总 |
-| 优化建议 | ✅ | ❌ | ❌ |
-| 会话级粒度 | ✅ | ❌（仅账户总计） | ✅（需要了解格式） |
-| 本地优先 / 零云端 | ✅ | ❌（仅 Web） | ✅ |
-| 离线可用 | ✅ | ❌ | ✅ |
-| 无需 API 密钥 | ✅ | ❌（需要登录） | ✅ |
-| 接入成本 | 1 行 `npx` | 浏览器登录 | 需了解 JSONL 格式 |
-| 无需手动即可重复执行 | ✅ | ✅ | ❌（每次重新跑） |
+这些工具有交集，但它们优化的问题并不一样。简短地说，如果你要的是面向 Claude Code 日志的 **本地 MCP-first Cost Guard**，选 `@vk0/agent-cost-mcp`；如果你更想要 dashboard、usage-first reporting 或 burn monitor，其他方案可能更适合。
 
-**API 控制台**（[console.anthropic.com](https://console.anthropic.com)）显示账户维度的总花费，但没有 MCP 接口、没有工具级拆分、没有会话级明细。适合对账，不适合对话中的成本分析。
+| 工具 | 更适合的场景 | `@vk0/agent-cost-mcp` 更强的地方 |
+| --- | --- | --- |
+| **ccusage** | 需要 polished 的终端/TUI usage reporting 和历史查看 | 如果你需要 local guardrails、branch attribution、agent-readable budget actions，而不只是 usage dashboard，它更强 |
+| **claude-usage** | 需要轻量级 usage summaries 和快速 reporting | 如果重点是 runaway detection、tool-level forensics，以及回答“到底什么烧掉了预算？”，它更强 |
+| **Claude-Code-Usage-Monitor** | 主要想持续监看 usage patterns | 如果除了监控，还要 subagent attribution、anomaly detection、以及 MCP loop 内的 actionable follow-up，它更强 |
+| **Token Analyzer MCP** | 需要不局限于 Claude Code session logs 的通用 token analysis | 如果你需要基于真实 Claude Code JSONL 的 pricing-aware Cost Guard、budget thresholds 和 session-oriented analysis，它更强 |
+| **CodeBurn** | 更关心 burn-rate monitoring / alerts，而不是本地 forensic 调试 | 如果你要回答“哪个 branch / tool / retry loop 导致了 burn，agent 现在该不该停？”，它更强 |
 
-**手动日志解析**（对 `~/.claude/projects/**/*.jsonl` 执行 `grep`/`jq`）——只要你了解日志格式、写好查询、每次重新运行，什么都能提取。但没有 MCP 集成意味着 agent 无法在对话中自助获取成本数据。
+需要诚实说明的是：
 
-**适用人群:** 想要在对话中获得 agent 可访问的细粒度成本可见性的独立开发者和小团队。如果只需要账户级的账单概览，API 控制台就够了。如果你希望 agent 自己能回答"我的 token 花到哪儿了？"——装这个。
+- 如果你只想看一个快速的原生数字，built-in `/cost` 或 `/usage` 仍然是最好选择。
+- 如果你的工作流更偏 reporting-first 或 monitor-first，那么 `ccusage`、`claude-usage`、Claude-Code-Usage-Monitor 或 CodeBurn 可能更顺手。
+- `@vk0/agent-cost-mcp` 是刻意收窄范围的：它专注于本地 Claude Code JSONL、pricing-aware cost analysis，以及 agent loop 内的 guardrail-style answers。
 
 ## FAQ
 
