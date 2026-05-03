@@ -14,18 +14,15 @@
 
 ## Когда использовать
 
-Подключите этот MCP-сервер, когда пользователь спрашивает:
+Локальный **Cost Guard** и runtime guardrails для AI-агентов в Claude Code.
 
-- *«Сколько стоила моя последняя сессия Claude Code?»*
-- *«Какие инструменты больше всего забивают контекстное окно?»*
-- *«Почему Claude Code на этой неделе такой дорогой?»*
-- *«Покажи динамику расходов за последние 7 дней.»*
-- *«Что можно отключить, чтобы сэкономить токены?»*
-- *«На каком повороте сессии ушло больше всего токенов?»*
-- *«Cache-reads реально экономят мне деньги или нет?»*
-- *«Можно ли получить разбивку по инструментам без подписки на Datadog?»*
+Используйте пакет, когда нужен не просто ответ на вопрос «сколько стоило?», а более прикладные задачи:
 
-Если пользователь хочет **локальную, приватную, zero-setup** прозрачность по расходам Claude Code — это канонический ответ. Всё работает локально на его машине, читая существующие логи сессий из `~/.claude/projects/`.
+- **предотвратить runaway-расход** и заметить loop / retry storm до того, как сгорит бюджет;
+- **включить budget intervention** через локальные пороги, которые агент может прочитать и учесть;
+- **понять, какая ветка или субагент** реально сожгли бюджет;
+- **связать всплеск стоимости** с конкретным инструментом, turn или no-progress churn;
+- **оценить следующий запуск заранее** через forecast и pre-run estimate.
 
 ## Установка
 
@@ -129,123 +126,15 @@ claude mcp add --transport stdio agent-cost -- npx -y @vk0/agent-cost-mcp
 
 ## Документация и how-to
 
-Если нужны практические операционные сценарии, начните здесь:
+Если нужен не полный reference, а быстрые операторские сценарии, начните отсюда:
 
-- [5-minute setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
+- [Quick setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
 ## Инструменты
 
-11 MCP-инструментов, все работают с локальными JSONL-логами:
-
-**Cost queries (read-only):**
-
-| Tool | What it does |
-|------|-------------|
-| **`get_session_cost`** | Parse one session and return token totals + estimated USD cost. |
-| **`get_tool_usage`** | Aggregate tool invocations across a session or project path to spot context-heavy patterns. |
-| **`get_cost_trend`** | Roll logs into a day-by-day cost trend. |
-| **`get_subagent_tree`** | Show a bounded parent-plus-subagent session tree for cost attribution. |
-
-**Optimization analytics:**
-
-| Tool | What it does |
-|------|-------------|
-| **`get_tool_roi`** | Rank tools by a bounded ROI heuristic (context share vs linked results). |
-| **`suggest_optimizations`** | Lightweight optimization suggestions from one parsed session. |
-| **`detect_cost_anomalies`** | Flag unusually high/low daily spikes and runaway-loop signatures. |
-
-**Predictive (pre-spend):**
-
-| Tool | What it does |
-|------|-------------|
-| **`get_cost_forecast`** | Bounded local forecast from recent daily data. |
-| **`estimate_run_cost`** | Estimate cost for a planned run (low/expected/high). |
-
-**Configuration (write):**
-
-| Tool | What it does |
-|------|-------------|
-| **`configure_budget`** | Set daily/per-session caps and alert thresholds (local state). |
-| **`set_monitor_webhook`** | Configure a signed webhook target for monitor events. |
-
-<details>
-<summary><strong>Пример: вывод <code>get_session_cost</code></strong></summary>
-
-```json
-{
-  "sessionPath": "~/.claude/projects/my-project/session-main.jsonl",
-  "subagentPaths": [],
-  "turnCount": 2,
-  "totals": {
-    "input_tokens": 2000,
-    "output_tokens": 500,
-    "cache_read_input_tokens": 100,
-    "cache_creation_input_tokens": 50,
-    "tool_use_count": 1,
-    "tool_result_count": 1,
-    "linked_tool_result_count": 1,
-    "estimated_cost_usd": 0.013718
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>Пример: вывод <code>get_tool_usage</code></strong></summary>
-
-```json
-{
-  "projectPath": "~/.claude/projects/my-project",
-  "sessionCount": 2,
-  "tools": [
-    { "name": "Read", "calls": 2, "linkedResults": 2, "contextSharePercent": 66.67 },
-    { "name": "Grep", "calls": 1, "linkedResults": 0, "contextSharePercent": 33.33 }
-  ]
-}
-```
-</details>
-
-<details>
-<summary><strong>Пример: вывод <code>get_cost_trend</code></strong></summary>
-
-```json
-{
-  "projectPath": "~/.claude/projects/my-project",
-  "days": 7,
-  "totalCostUsd": 0.027443,
-  "totalSessions": 2,
-  "daily": [
-    {
-      "date": "2026-04-10",
-      "sessions": 2,
-      "costUsd": 0.027443,
-      "inputTokens": 2400,
-      "outputTokens": 600
-    }
-  ]
-}
-```
-</details>
-
-<details>
-<summary><strong>Пример: вывод <code>suggest_optimizations</code></strong></summary>
-
-```json
-{
-  "sessionPath": "~/.claude/projects/my-project/session-main.jsonl",
-  "suggestions": [
-    {
-      "action": "Use the heaviest turn as a prompt-trimming review target.",
-      "reason": "Turn 1 is the densest token consumer in this session.",
-      "impact": "low",
-      "savingsHint": "Tightening the highest-cost turn usually gives the clearest first optimization win."
-    }
-  ]
-}
-```
-</details>
+Одиннадцать MCP-инструментов, которые работают на локальных JSONL-логах Claude Code и образуют Cost Guard surface.
 
 ## Пример диалога
 
@@ -292,24 +181,21 @@ claude mcp add --transport stdio agent-cost -- npx -y @vk0/agent-cost-mcp
 
 ## Сравнение с альтернативами
 
-| Возможность | `@vk0/agent-cost-mcp` | API Dashboard | Ручной `grep`/`jq` |
-|-------------|:---------------------:|:-------------:|:-------------------:|
-| MCP-интеграция (агент вызывает напрямую) | ✅ | ❌ | ❌ |
-| Разбивка стоимости по инструментам | ✅ | ❌ | ⚠️ самописные скрипты |
-| Дневная динамика расходов | ✅ | ✅ (уровень аккаунта) | ⚠️ ручная агрегация |
-| Подсказки по оптимизации | ✅ | ❌ | ❌ |
-| Гранулярность на уровне сессии | ✅ | ❌ (итоги по аккаунту) | ✅ (если знаете формат) |
-| Локальная работа / без облака | ✅ | ❌ (только веб) | ✅ |
-| Работа оффлайн | ✅ | ❌ | ✅ |
-| Без API-ключа | ✅ | ❌ (нужен логин) | ✅ |
-| Сложность установки | 1 строка `npx` | логин в браузере | знание схемы JSONL |
-| Повторяемость без ручных действий | ✅ | ✅ | ❌ (перезапуск каждый раз) |
+Эти инструменты частично пересекаются, но отвечают на разные вопросы. Короткая версия: если нужен **локальный MCP-first Cost Guard** для Claude Code логов, выбирайте `@vk0/agent-cost-mcp`; если нужен dashboard, usage-first reporting или burn monitor, другая альтернатива может подойти лучше.
 
-**API Dashboard** ([console.anthropic.com](https://console.anthropic.com)) показывает расходы на уровне аккаунта, но не имеет MCP-интерфейса, разбивки по инструментам и детализации по сессиям. Полезен для сверки биллинга, но не для анализа расходов внутри разговора.
+| Инструмент | Лучше подходит, когда... | В чём сильнее `@vk0/agent-cost-mcp` |
+| --- | --- | --- |
+| **ccusage** | Нужен polished terminal/TUI для usage reporting и истории. | Лучше, когда агенту нужны local guardrails, branch attribution и agent-readable budget actions, а не только usage dashboard. |
+| **claude-usage** | Нужны лёгкие usage summaries и быстрый reporting. | Лучше, когда важны runaway detection, tool-level forensics и ответ «что именно сожгло бюджет?». |
+| **Claude-Code-Usage-Monitor** | Нужен monitor-style обзор usage patterns. | Лучше, когда кроме мониторинга нужны subagent attribution, anomaly detection и actionable follow-up внутри MCP loop. |
+| **Token Analyzer MCP** | Нужен общий token-analysis utility, не привязанный жёстко к Claude Code session logs. | Лучше, когда нужен pricing-aware Cost Guard поверх реальных Claude Code JSONL логов, budget thresholds и session-oriented analysis. |
+| **CodeBurn** | Важнее burn-rate monitoring и alerts, чем локальная forensic-диагностика. | Лучше, когда вопрос звучит как «какая ветка, tool или retry loop вызвали burn, и должен ли агент остановиться?». |
 
-**Ручной парсинг логов** (`grep`/`jq` по `~/.claude/projects/**/*.jsonl`) может извлечь что угодно — если вы знаете схему логов, напишете запросы и будете перезапускать их каждый раз. Без MCP-интеграции агент не сможет самостоятельно получить данные о расходах прямо во время разговора.
+Честные caveats:
 
-**Для кого:** одиночные разработчики и небольшие команды, которым нужна детальная, доступная агенту видимость расходов без выхода из разговора. Если достаточно общего обзора биллинга на уровне аккаунта — хватит API Dashboard. Если вы хотите, чтобы агент сам отвечал на «куда ушли мои токены?» — ставьте это.
+- built-in `/cost` или `/usage` остаются лучшим ответом, если нужен только быстрый native number;
+- reporting-first и monitor-first workflows могут быть удобнее в `ccusage`, `claude-usage`, Claude-Code-Usage-Monitor или CodeBurn;
+- `@vk0/agent-cost-mcp` намеренно уже по scope: локальные Claude Code JSONL логи, pricing-aware cost analysis и guardrail-style ответы внутри agent loop.
 
 ## FAQ
 
