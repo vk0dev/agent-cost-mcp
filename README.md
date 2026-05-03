@@ -200,7 +200,7 @@ Eleven MCP tools, all operating on local JSONL session logs and all aimed at one
 |------|-------------|
 | **`get_cost_forecast`** | Project a bounded local cost forecast from recent daily trend data so an operator can ask where spend is heading next, not just where it already went; it degrades gracefully when history is still short. |
 
-![forecast demo](docs/demo-forecast.gif)
+![forecast demo: get_cost_forecast showing recency-weighted-average-rc2 local spend projection](docs/demo-forecast.gif)
 | **`estimate_run_cost`** | Estimate the likely cost of a planned run before execution from prompt, model, and expected tool-call shape, returning `{low, expected, high}` with confidence for pre-spend decisions. |
 
 **Configuration (write):**
@@ -341,16 +341,16 @@ These tools overlap, but they optimize for different questions. The short versio
 
 | Tool | Better fit when... | Where it appears stronger | Where `@vk0/agent-cost-mcp` is stronger |
 |------|--------------------|---------------------------|------------------------------------------|
-| **Claude Code built-in `/cost` and `/usage`** | You want the fastest possible in-session spend or recent-usage check and do not need history or tool attribution. | Native, immediate, zero setup, best for the current session’s quick answer. | Cross-session analysis, per-tool breakdowns, anomaly detection, subagent attribution, and pre-spend guardrails once the next question is “why did cost move?” |
 | [`ccusage`](https://github.com/ryoppippi/ccusage) | You want a polished terminal or TUI dashboard for Claude Code usage and burn tracking. | More mature human-facing dashboard experience and stronger operator-style monitoring UX. | MCP-first access for agents, richer per-tool/session forensics, and Cost Guard answers inside the conversation instead of in a separate dashboard. |
-| [`@ccusage/mcp`](https://www.npmjs.com/package/@ccusage/mcp) | You already like the ccusage model and want that usage surface exposed through MCP. | Natural fit if your workflow starts from ccusage and you want MCP access without switching product shape. | Narrower Claude Code cost-forensics focus, more guardrail-style tooling, and a stronger emphasis on actionable “what changed and what should I do next?” outputs. |
-| [`CodeBurn`](https://github.com/getagentseal/codeburn) | You care most about burn-rate or usage monitoring and alerting rather than offline session forensics. | Stronger when the main question is “am I burning too fast?” instead of “which branch, tool, or retry loop caused this?” | Better for local Cost Guard workflows, tool attribution, branch/subagent breakdowns, and detailed post-run cost debugging without cloud dependence. |
+| **claude-usage** | You want lightweight usage summaries or quick reporting from Claude usage data and do not need much agent-facing intervention logic. | Simpler reporting-first framing and lighter-weight usage snapshots. | More useful when the next question is which tool, branch, or retry loop caused the spend and whether the agent should stop or adjust behavior. |
+| **Claude-Code-Usage-Monitor** | You primarily want monitor-style visibility into Claude Code usage patterns. | Better fit if passive monitoring is the job and detailed local forensics are secondary. | Stronger for local guardrails, subagent attribution, anomaly detection, and actionable follow-up inside the MCP loop. |
 | [`Token Analyzer MCP`](https://github.com/proggreg/mcp-token-analyzer) | You need a general MCP token-analysis utility across payloads, prompts, or message shapes. | Broader token-analysis framing not tied as tightly to Claude Code session logs. | More specific to real Claude Code JSONL spend analysis, pricing-aware cost math, and session-oriented Cost Guard workflows. |
+| [`CodeBurn`](https://github.com/getagentseal/codeburn) | You care most about burn-rate or usage monitoring and alerting rather than offline session forensics. | Stronger when the main question is “am I burning too fast?” instead of “which branch, tool, or retry loop caused this?” | Better for local Cost Guard workflows, tool attribution, branch/subagent breakdowns, and detailed post-run cost debugging without cloud dependence. |
 
 A few honest caveats:
 
-- Built-in `/cost` is still the best answer if all you want is a quick current-session number.
-- `ccusage` and `@ccusage/mcp` may be the better choice if your main priority is a familiar dashboard-first usage experience rather than deeper session forensics.
+- Built-in `/cost` or `/usage` is still the best answer if all you want is a quick native number.
+- `ccusage`, `claude-usage`, or Claude-Code-Usage-Monitor may be the better choice if your main priority is a reporting-first or monitor-first experience rather than deeper session forensics.
 - CodeBurn may be the better fit if burn-rate monitoring matters more than local cost debugging detail.
 - `@vk0/agent-cost-mcp` is intentionally narrower: local Claude Code JSONL logs, pricing-aware cost analysis, MCP-callable outputs, and guardrail-style answers inside the agent loop.
 
