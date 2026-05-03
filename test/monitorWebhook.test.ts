@@ -88,7 +88,7 @@ describe('monitor webhook state', () => {
     });
 
     const fixturesPath = new URL('../fixtures', import.meta.url).pathname;
-    const result = getCostTrend({ projectPath: fixturesPath, days: 7 });
+    const result = getCostTrend({ projectPath: fixturesPath, days: 30 });
 
     expect(result.totalCostUsd).toBeGreaterThan(0);
     expect(emitted).toHaveLength(1);
