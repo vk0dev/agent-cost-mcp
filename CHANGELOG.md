@@ -1,3 +1,8 @@
+## [2.0.1] - 2026-05-04
+
+### Fixed
+- Aligned `server.json` package metadata with the shipped 2.0.0 release so MCP publish metadata no longer reports a stale `2.0.0-beta.9` package version.
+
 ## [2.0.0] — 2026-05-02
 
 ### Added
