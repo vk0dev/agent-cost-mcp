@@ -1120,7 +1120,7 @@ export function registerTools(server: McpServer): void {
     'configure_budget',
     {
       description:
-        'When to use: set deterministic daily/session budget caps and alert thresholds for local cost guardrails. Does NOT enforce billing-side spend limits or notify external systems.',
+        'Set deterministic daily/session budget caps and alert thresholds for local cost guardrails. Does NOT enforce billing-side spend limits or notify external systems.',
       inputSchema: configureBudgetRequestSchema.shape,
       outputSchema: configureBudgetOutputSchema.shape,
     },
@@ -1140,7 +1140,7 @@ export function registerTools(server: McpServer): void {
     'get_session_cost',
     {
       description:
-        'When to use: get a single Claude Code session cost summary with token totals and estimated USD cost from a session log. Does NOT fetch remote billing data, reconcile invoices, or infer missing logs.',
+        'Get a single Claude Code session cost summary with token totals and estimated USD cost from a session log. Does NOT fetch remote billing data, reconcile invoices, or infer missing logs.',
       inputSchema: sessionRequestSchema.shape,
       outputSchema: sessionCostOutputSchema.shape,
     },
@@ -1151,7 +1151,7 @@ export function registerTools(server: McpServer): void {
     'get_tool_usage',
     {
       description:
-        'When to use: inspect which tools appear most often across one session or a filtered project log directory to spot context-heavy patterns. Does NOT measure per-tool token usage precisely or inspect live Claude Code sessions.',
+        'Inspect which tools appear most often across one session or a filtered project log directory to spot context-heavy patterns. Does NOT measure per-tool token usage precisely or inspect live Claude Code sessions.',
       inputSchema: toolUsageRequestSchema.shape,
       outputSchema: toolUsageOutputSchema.shape,
     },
@@ -1162,7 +1162,7 @@ export function registerTools(server: McpServer): void {
     'get_subagent_tree',
     {
       description:
-        'When to use: show a bounded parent-plus-subagent session tree for one local Claude Code session so nested cost attribution is easier to inspect. Does NOT infer hidden lineage beyond the available local JSONL files or reconstruct remote orchestration state.',
+        'Show a bounded parent-plus-subagent session tree for one local Claude Code session so nested cost attribution is easier to inspect. Does NOT infer hidden lineage beyond the available local JSONL files or reconstruct remote orchestration state.',
       inputSchema: subagentTreeRequestSchema.shape,
       outputSchema: subagentTreeOutputSchema.shape,
     },
@@ -1173,7 +1173,7 @@ export function registerTools(server: McpServer): void {
     'get_tool_roi',
     {
       description:
-        'When to use: rank tools by a bounded heuristic ROI view using context share, linked result share, and estimated cost share from parsed local sessions. Does NOT claim exact per-tool billing attribution or infer true business value.',
+        'Rank tools by a bounded heuristic ROI view using context share, linked result share, and estimated cost share from parsed local sessions. Does NOT claim exact per-tool billing attribution or infer true business value.',
       inputSchema: toolUsageRequestSchema.shape,
       outputSchema: toolRoiOutputSchema.shape,
     },
@@ -1184,7 +1184,7 @@ export function registerTools(server: McpServer): void {
     'get_cost_trend',
     {
       description:
-        'When to use: roll session logs into a day-by-day cost trend for a local project path so you can watch spend move over time. Does NOT predict future spend, sync cloud analytics, or backfill missing timestamp history.',
+        'Roll session logs into a day-by-day cost trend for a local project path so you can watch spend move over time. Does NOT predict future spend, sync cloud analytics, or backfill missing timestamp history.',
       inputSchema: costTrendRequestSchema.shape,
       outputSchema: trendOutputSchema.shape,
     },
@@ -1195,7 +1195,7 @@ export function registerTools(server: McpServer): void {
     'get_cost_forecast',
     {
       description:
-        'When to use: project a bounded local cost forecast from recent daily trend data so you can estimate upcoming spend. The forecast is deterministic, recency-weighted, non-seasonal, and local-first; confidence metadata and sparse-history adjustment may appear, but it does NOT model seasonality, external events, or remote billing feeds.',
+        'Project a bounded local cost forecast from recent daily trend data so you can estimate upcoming spend. The forecast is deterministic, recency-weighted, non-seasonal, and local-first; confidence metadata and sparse-history adjustment may appear, but it does NOT model seasonality, external events, or remote billing feeds.',
       inputSchema: costForecastRequestSchema.shape,
       outputSchema: costForecastOutputSchema.shape,
     },
@@ -1206,7 +1206,7 @@ export function registerTools(server: McpServer): void {
     'detect_cost_anomalies',
     {
       description:
-        'When to use: flag unusually high or low daily cost spikes against the recent local baseline for a project. Does NOT stream alerts continuously, infer root cause automatically, or replace longer-term monitoring.',
+        'Flag unusually high or low daily cost spikes against the recent local baseline for a project. Does NOT stream alerts continuously, infer root cause automatically, or replace longer-term monitoring.',
       inputSchema: anomalyRequestSchema.shape,
       outputSchema: anomalyOutputSchema.shape,
     },
@@ -1217,7 +1217,7 @@ export function registerTools(server: McpServer): void {
     'estimate_run_cost',
     {
       description:
-        'When to use: estimate the likely cost of a planned run before execution using prompt/output token assumptions and cache reuse. Does NOT inspect live runs, predict tool-level ROI, or model cache-creation writes beyond the bounded assumptions in the result.',
+        'Estimate the likely cost of a planned run before execution using prompt/output token assumptions and cache reuse. Does NOT inspect live runs, predict tool-level ROI, or model cache-creation writes beyond the bounded assumptions in the result.',
       inputSchema: estimateRunRequestSchema.shape,
       outputSchema: estimateRunOutputSchema.shape,
     },
@@ -1228,7 +1228,7 @@ export function registerTools(server: McpServer): void {
     'set_monitor_webhook',
     {
       description:
-        'When to use: configure an alert webhook target for signed monitor events such as forecast/anomaly/cap notifications. Does NOT test the remote endpoint or manage webhook history.',
+        'Configure an alert webhook target for signed monitor events such as forecast/anomaly/cap notifications. Does NOT test the remote endpoint or manage webhook history.',
       inputSchema: monitorWebhookRequestSchema.shape,
       outputSchema: monitorWebhookOutputSchema.shape,
     },
@@ -1239,7 +1239,7 @@ export function registerTools(server: McpServer): void {
     'suggest_optimizations',
     {
       description:
-        'When to use: generate lightweight optimization suggestions from one parsed session log after cost or tool-usage review. Does NOT rewrite prompts automatically, inspect source code, or replace a full human performance audit.',
+        'Generate lightweight optimization suggestions from one parsed session log after cost or tool-usage review. Does NOT rewrite prompts automatically, inspect source code, or replace a full human performance audit.',
       inputSchema: sessionRequestSchema.shape,
       outputSchema: suggestionsOutputSchema.shape,
     },
