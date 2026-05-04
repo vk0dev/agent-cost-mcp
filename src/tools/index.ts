@@ -185,6 +185,9 @@ const costForecastOutputSchema = z.object({
   projectedMonthlyUsd: z.number().nonnegative(),
   method: z.enum(['recency-weighted-average-rc2']),
   confidence: z.enum(['low', 'medium', 'high']),
+  adjustment_mode: z.enum(['none', 'sparse_history_fallback_v1']),
+  adjusted_point_estimate_usd: z.number().nonnegative().optional(),
+  unadjusted_point_estimate_usd: z.number().nonnegative().optional(),
   forecast_confidence: forecastConfidenceSchema,
   assumptions: z.array(z.string()),
   _meta: z.record(z.string(), z.unknown()).optional(),
@@ -708,6 +711,54 @@ function buildForecastConfidence(daily: CostTrendResult['daily'], forecastDays: 
   };
 }
 
+function maybeAdjustSparseForecast(params: {
+  daily: CostTrendResult['daily'];
+  forecastDays: number;
+  baselineDailyCostUsd: number;
+  projectedTotalUsd: number;
+  forecastConfidence: ReturnType<typeof buildForecastConfidence>;
+}) {
+  const { daily, forecastDays, baselineDailyCostUsd, projectedTotalUsd, forecastConfidence } = params;
+  const nonZeroDailyCosts = daily
+    .map((day) => day.costUsd)
+    .filter((cost) => cost > 0)
+    .sort((a, b) => a - b);
+  const nonZeroTotal = nonZeroDailyCosts.reduce((sum, cost) => sum + cost, 0);
+  const maxShare = nonZeroTotal === 0 ? 0 : Math.max(...nonZeroDailyCosts) / nonZeroTotal;
+  const quartileInstability = forecastConfidence.q1_daily_cost_usd > 0
+    && forecastConfidence.q3_daily_cost_usd / forecastConfidence.q1_daily_cost_usd >= 3;
+  const sparseHistory = forecastConfidence.non_zero_days <= 2
+    || forecastConfidence.history_days_considered <= 2
+    || quartileInstability
+    || (maxShare > 0.6 && forecastConfidence.history_days_considered <= 2);
+
+  if (!sparseHistory || baselineDailyCostUsd === 0) {
+    return {
+      adjustment_mode: 'none' as const,
+      adjusted_point_estimate_usd: undefined,
+      unadjusted_point_estimate_usd: undefined,
+      projectedTotalUsd,
+      projectedMonthlyUsd: roundUsd(baselineDailyCostUsd * 30),
+    };
+  }
+
+  const adjustedDailyBaseline = roundUsd(
+    Math.max(
+      forecastConfidence.q1_daily_cost_usd,
+      Math.min(baselineDailyCostUsd, forecastConfidence.median_daily_cost_usd || baselineDailyCostUsd),
+    ),
+    6,
+  );
+
+  return {
+    adjustment_mode: 'sparse_history_fallback_v1' as const,
+    adjusted_point_estimate_usd: roundUsd(adjustedDailyBaseline * forecastDays),
+    unadjusted_point_estimate_usd: projectedTotalUsd,
+    projectedTotalUsd: roundUsd(adjustedDailyBaseline * forecastDays),
+    projectedMonthlyUsd: roundUsd(adjustedDailyBaseline * 30),
+  };
+}
+
 export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>): CostForecastResult {
   let trend: CostTrendResult | null = null;
   try {
@@ -728,9 +779,15 @@ export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>
         return sum + (day.costUsd * weight);
       }, 0) / trend.daily.reduce((sum, _day, index) => sum + index + 1, 0);
   const baselineDailyCostUsd = roundUsd(weightedBaseline, 6);
-  const projectedTotalUsd = roundUsd(baselineDailyCostUsd * input.forecastDays);
-  const projectedMonthlyUsd = roundUsd(baselineDailyCostUsd * 30);
-  const forecastConfidence = buildForecastConfidence(trend?.daily ?? [], input.forecastDays, projectedTotalUsd);
+  const unadjustedProjectedTotalUsd = roundUsd(baselineDailyCostUsd * input.forecastDays);
+  const forecastConfidence = buildForecastConfidence(trend?.daily ?? [], input.forecastDays, unadjustedProjectedTotalUsd);
+  const adjustment = maybeAdjustSparseForecast({
+    daily: trend?.daily ?? [],
+    forecastDays: input.forecastDays,
+    baselineDailyCostUsd,
+    projectedTotalUsd: unadjustedProjectedTotalUsd,
+    forecastConfidence,
+  });
   const assumptions = [
     'Forecast uses a deterministic recency-weighted daily average across the local lookback window.',
     'rc.2 remains non-seasonal and local-first; seasonal modeling is intentionally deferred.',
@@ -746,10 +803,13 @@ export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>
     lookbackDays: input.lookbackDays,
     forecastDays: input.forecastDays,
     baselineDailyCostUsd,
-    projectedTotalUsd,
-    projectedMonthlyUsd,
+    projectedTotalUsd: adjustment.projectedTotalUsd,
+    projectedMonthlyUsd: adjustment.projectedMonthlyUsd,
     method: 'recency-weighted-average-rc2',
     confidence: forecastConfidence.level,
+    adjustment_mode: adjustment.adjustment_mode,
+    adjusted_point_estimate_usd: adjustment.adjusted_point_estimate_usd,
+    unadjusted_point_estimate_usd: adjustment.unadjusted_point_estimate_usd,
     forecast_confidence: forecastConfidence,
     assumptions,
     _meta: {},

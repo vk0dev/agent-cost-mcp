@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { estimateCostUsd } from '../src/pricing.js';
 import { detectCostAnomalies, estimateRunCost, getCostForecast } from '../src/tools/index.js';
 
 function makeProjectDir() {
@@ -18,6 +19,25 @@ function writeSession(projectPath: string, name: string, rows: Array<{ timestamp
     const when = new Date(stamped);
     utimesSync(filePath, when, when);
   }
+}
+
+function dailyAssistantRow(timestamp: string, inputTokens: number, outputTokens: number, model = 'claude-sonnet-4') {
+  return {
+    type: 'assistant',
+    timestamp,
+    model,
+    usage: {
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+    },
+    message: { content: [] },
+  };
+}
+
+function forecastError(actual: number, estimate: number) {
+  return Math.abs(actual - estimate);
 }
 
 describe('forecast and anomaly edge cases', () => {
@@ -102,13 +122,7 @@ describe('forecast and anomaly edge cases', () => {
     const projectPath = makeProjectDir();
     Array.from({ length: 8 }, (_, idx) => idx + 1).forEach((day) => {
       writeSession(projectPath, `stable-day-${day}.jsonl`, [
-        {
-          type: 'assistant',
-          timestamp: `2026-05-${String(day).padStart(2, '0')}T12:00:00.000Z`,
-          model: 'claude-sonnet-4',
-          usage: { input_tokens: 2400, output_tokens: 600, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
-          message: { content: [] },
-        },
+        dailyAssistantRow(`2026-05-${String(day).padStart(2, '0')}T12:00:00.000Z`, 2400, 600),
       ]);
     });
 
@@ -122,6 +136,55 @@ describe('forecast and anomaly edge cases', () => {
     expect(result.forecast_confidence.median_daily_cost_usd).toBeLessThanOrEqual(result.forecast_confidence.q3_daily_cost_usd);
     expect(result.forecast_confidence.projected_range_usd.low).toBeLessThanOrEqual(result.projectedTotalUsd);
     expect(result.forecast_confidence.projected_range_usd.high).toBeGreaterThanOrEqual(result.projectedTotalUsd);
+    expect(result.adjustment_mode).toBe('none');
+    expect(result.adjusted_point_estimate_usd).toBeUndefined();
+    expect(result.unadjusted_point_estimate_usd).toBeUndefined();
+  });
+
+  it('triggers sparse fallback for a one-spike two-day history and gets closer to the next-day truth', () => {
+    const projectPath = makeProjectDir();
+    writeSession(projectPath, 'day-1.jsonl', [dailyAssistantRow('2026-05-01T12:00:00.000Z', 1000, 200)]);
+    writeSession(projectPath, 'day-2.jsonl', [dailyAssistantRow('2026-05-02T12:00:00.000Z', 10000, 2000)]);
+
+    const result = getCostForecast({ projectPath, lookbackDays: 30, forecastDays: 1 });
+    const nextDayTruth = estimateCostUsd('claude-sonnet-4', {
+      input_tokens: 2500,
+      output_tokens: 500,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+    });
+
+    expect(result.adjustment_mode).toBe('sparse_history_fallback_v1');
+    expect(result.adjusted_point_estimate_usd).toBeDefined();
+    expect(result.unadjusted_point_estimate_usd).toBeDefined();
+    expect(result.projectedTotalUsd).toBe(result.adjusted_point_estimate_usd);
+    expect(result.adjusted_point_estimate_usd!).toBeLessThan(result.unadjusted_point_estimate_usd!);
+    expect(forecastError(nextDayTruth, result.adjusted_point_estimate_usd!)).toBeLessThan(
+      forecastError(nextDayTruth, result.unadjusted_point_estimate_usd!),
+    );
+  });
+
+  it('triggers sparse fallback for a burst-dominated short history and reduces overshoot', () => {
+    const projectPath = makeProjectDir();
+    writeSession(projectPath, 'day-a.jsonl', [dailyAssistantRow('2026-05-01T12:00:00.000Z', 2200, 400)]);
+    writeSession(projectPath, 'day-b.jsonl', [dailyAssistantRow('2026-05-02T12:00:00.000Z', 18000, 3600)]);
+
+    const result = getCostForecast({ projectPath, lookbackDays: 30, forecastDays: 1 });
+    const nextDayTruth = estimateCostUsd('claude-sonnet-4', {
+      input_tokens: 3000,
+      output_tokens: 600,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+    });
+
+    expect(result.adjustment_mode).toBe('sparse_history_fallback_v1');
+    expect(result.adjusted_point_estimate_usd).toBeDefined();
+    expect(result.unadjusted_point_estimate_usd).toBeDefined();
+    expect(result.projectedTotalUsd).toBe(result.adjusted_point_estimate_usd);
+    expect(result.adjusted_point_estimate_usd!).toBeLessThan(result.unadjusted_point_estimate_usd!);
+    expect(forecastError(nextDayTruth, result.adjusted_point_estimate_usd!)).toBeLessThan(
+      forecastError(nextDayTruth, result.unadjusted_point_estimate_usd!),
+    );
   });
 
   it('keeps zero-cost days out of anomaly output even when every non-zero day is unusual', () => {
