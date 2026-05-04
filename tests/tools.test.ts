@@ -192,7 +192,7 @@ describe('get_cost_forecast', () => {
 
   it('weights recent populated days above the flat average on richer multi-day history', () => {
     const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-forecast-recency-'));
-    const now = new Date('2026-04-29T16:00:00.000Z');
+    const now = new Date();
     const day1 = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
     const day2 = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
     const day3 = now;
@@ -241,7 +241,7 @@ describe('get_cost_forecast', () => {
 
   it('stays low-confidence with sparse history even when recent days are weighted', () => {
     const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-forecast-sparse-'));
-    const now = new Date('2026-04-29T16:00:00.000Z');
+    const now = new Date();
     const yesterday = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
 
     writeSessionLog(path.join(projectPath, 'day1.jsonl'), [
