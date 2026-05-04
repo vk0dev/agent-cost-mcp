@@ -1,17 +1,23 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, utimesSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { detectCostAnomalies, estimateRunCost } from '../src/tools/index.js';
+import { detectCostAnomalies, estimateRunCost, getCostForecast } from '../src/tools/index.js';
 
 function makeProjectDir() {
   return mkdtempSync(path.join(os.tmpdir(), 'agent-cost-forecast-'));
 }
 
-function writeSession(projectPath: string, name: string, rows: unknown[]) {
-  writeFileSync(path.join(projectPath, name), rows.map((row) => JSON.stringify(row)).join('\n') + '\n');
+function writeSession(projectPath: string, name: string, rows: Array<{ timestamp?: string } & Record<string, unknown>>) {
+  const filePath = path.join(projectPath, name);
+  writeFileSync(filePath, rows.map((row) => JSON.stringify(row)).join('\n') + '\n');
+  const stamped = rows.find((row) => typeof row.timestamp === 'string')?.timestamp;
+  if (stamped) {
+    const when = new Date(stamped);
+    utimesSync(filePath, when, when);
+  }
 }
 
 describe('forecast and anomaly edge cases', () => {
@@ -37,6 +43,85 @@ describe('forecast and anomaly edge cases', () => {
     expect(result.projectPath).toBe(projectPath);
     expect(result.baselineDailyCostUsd).toBeGreaterThanOrEqual(0);
     expect(result.anomalies).toEqual([]);
+  });
+
+  it('returns low forecast_confidence for one-day sparse history', () => {
+    const projectPath = makeProjectDir();
+    writeSession(projectPath, 'single-forecast.jsonl', [
+      {
+        type: 'assistant',
+        timestamp: '2026-05-01T12:00:00.000Z',
+        model: 'claude-sonnet-4',
+        usage: { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+        message: { content: [] },
+      },
+    ]);
+
+    const result = getCostForecast({ projectPath, lookbackDays: 30, forecastDays: 30 });
+
+    expect(result.method).toBe('recency-weighted-average-rc2');
+    expect(result.confidence).toBe('low');
+    expect(result.forecast_confidence.level).toBe('low');
+    expect(result.forecast_confidence.reason_codes).toContain('insufficient_non_zero_days');
+    expect(result.forecast_confidence.history_days_considered).toBe(1);
+    expect(result.forecast_confidence.non_zero_days).toBe(1);
+    expect(result.forecast_confidence.projected_range_usd.low).toBeLessThanOrEqual(result.projectedTotalUsd);
+    expect(result.forecast_confidence.projected_range_usd.high).toBeGreaterThanOrEqual(result.projectedTotalUsd);
+  });
+
+  it('surfaces wide quartile ranges and bursty reason codes for mixed histories', () => {
+    const projectPath = makeProjectDir();
+    const burstRows = [
+      { input_tokens: 1000, output_tokens: 200 },
+      { input_tokens: 12000, output_tokens: 6000 },
+      { input_tokens: 900, output_tokens: 200 },
+      { input_tokens: 18000, output_tokens: 9000 },
+    ];
+    burstRows.forEach((usage, idx) => {
+      writeSession(projectPath, `bursty-day-${idx + 1}.jsonl`, [
+        {
+          type: 'assistant',
+          timestamp: `2026-05-${String(idx + 1).padStart(2, '0')}T12:00:00.000Z`,
+          model: 'claude-sonnet-4',
+          usage: { ...usage, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+          message: { content: [] },
+        },
+      ]);
+    });
+
+    const result = getCostForecast({ projectPath, lookbackDays: 30, forecastDays: 30 });
+
+    expect(result.method).toBe('recency-weighted-average-rc2');
+    expect(result.forecast_confidence.reason_codes).toContain('bursty_spend_pattern');
+    expect(result.forecast_confidence.q1_daily_cost_usd).toBeLessThan(result.forecast_confidence.q3_daily_cost_usd);
+    expect(result.forecast_confidence.projected_range_usd.low).toBeLessThanOrEqual(result.projectedTotalUsd);
+    expect(result.forecast_confidence.projected_range_usd.high).toBeGreaterThanOrEqual(result.projectedTotalUsd);
+  });
+
+  it('returns ordered quartiles and high confidence for stable multi-day history', () => {
+    const projectPath = makeProjectDir();
+    Array.from({ length: 8 }, (_, idx) => idx + 1).forEach((day) => {
+      writeSession(projectPath, `stable-day-${day}.jsonl`, [
+        {
+          type: 'assistant',
+          timestamp: `2026-05-${String(day).padStart(2, '0')}T12:00:00.000Z`,
+          model: 'claude-sonnet-4',
+          usage: { input_tokens: 2400, output_tokens: 600, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+          message: { content: [] },
+        },
+      ]);
+    });
+
+    const result = getCostForecast({ projectPath, lookbackDays: 30, forecastDays: 30 });
+
+    expect(result.method).toBe('recency-weighted-average-rc2');
+    expect(result.confidence).toBe('high');
+    expect(result.forecast_confidence.level).toBe('high');
+    expect(result.forecast_confidence.reason_codes).toContain('stable_spend_history');
+    expect(result.forecast_confidence.q1_daily_cost_usd).toBeLessThanOrEqual(result.forecast_confidence.median_daily_cost_usd);
+    expect(result.forecast_confidence.median_daily_cost_usd).toBeLessThanOrEqual(result.forecast_confidence.q3_daily_cost_usd);
+    expect(result.forecast_confidence.projected_range_usd.low).toBeLessThanOrEqual(result.projectedTotalUsd);
+    expect(result.forecast_confidence.projected_range_usd.high).toBeGreaterThanOrEqual(result.projectedTotalUsd);
   });
 
   it('keeps zero-cost days out of anomaly output even when every non-zero day is unusual', () => {

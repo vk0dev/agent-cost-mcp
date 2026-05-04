@@ -152,6 +152,25 @@ const trendOutputSchema = z.object({
   hard_cap_message: z.string().optional(),
 });
 
+const forecastConfidenceSchema = z.object({
+  level: z.enum(['low', 'medium', 'high']),
+  reason_codes: z.array(z.enum([
+    'insufficient_non_zero_days',
+    'short_history_window',
+    'bursty_spend_pattern',
+    'stable_spend_history',
+  ])),
+  history_days_considered: z.number().int().nonnegative(),
+  non_zero_days: z.number().int().nonnegative(),
+  q1_daily_cost_usd: z.number().nonnegative(),
+  median_daily_cost_usd: z.number().nonnegative(),
+  q3_daily_cost_usd: z.number().nonnegative(),
+  projected_range_usd: z.object({
+    low: z.number().nonnegative(),
+    high: z.number().nonnegative(),
+  }),
+});
+
 const costForecastOutputSchema = z.object({
   projectPath: z.string(),
   lookbackDays: z.number().int().positive(),
@@ -160,7 +179,8 @@ const costForecastOutputSchema = z.object({
   projectedTotalUsd: z.number().nonnegative(),
   projectedMonthlyUsd: z.number().nonnegative(),
   method: z.enum(['recency-weighted-average-rc2']),
-  confidence: z.enum(['low', 'medium']),
+  confidence: z.enum(['low', 'medium', 'high']),
+  forecast_confidence: forecastConfidenceSchema,
   assumptions: z.array(z.string()),
   _meta: z.record(z.string(), z.unknown()).optional(),
 });
@@ -563,6 +583,63 @@ export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Cos
   return result;
 }
 
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  if (sorted.length === 1) return sorted[0]!;
+  const idx = (sorted.length - 1) * p;
+  const lower = Math.floor(idx);
+  const upper = Math.ceil(idx);
+  if (lower === upper) return sorted[lower]!;
+  const weight = idx - lower;
+  return sorted[lower]! * (1 - weight) + sorted[upper]! * weight;
+}
+
+function roundUsd(value: number, digits = 2): number {
+  return Number(value.toFixed(digits));
+}
+
+function buildForecastConfidence(daily: CostTrendResult['daily'], forecastDays: number, projectedTotalUsd: number) {
+  const nonZeroDailyCosts = daily
+    .map((day) => day.costUsd)
+    .filter((cost) => cost > 0)
+    .sort((a, b) => a - b);
+  const historyDaysConsidered = daily.length;
+  const nonZeroDays = nonZeroDailyCosts.length;
+  const q1 = roundUsd(percentile(nonZeroDailyCosts, 0.25));
+  const median = roundUsd(percentile(nonZeroDailyCosts, 0.5));
+  const q3 = roundUsd(percentile(nonZeroDailyCosts, 0.75));
+  const bursty = nonZeroDays >= 2 && q1 > 0 && q3 / q1 >= 3;
+
+  const reasonCodes: Array<
+    'insufficient_non_zero_days' | 'short_history_window' | 'bursty_spend_pattern' | 'stable_spend_history'
+  > = [];
+  if (nonZeroDays < 2) reasonCodes.push('insufficient_non_zero_days');
+  if (historyDaysConsidered < 7) reasonCodes.push('short_history_window');
+  if (bursty) reasonCodes.push('bursty_spend_pattern');
+
+  let level: 'low' | 'medium' | 'high' = 'medium';
+  if (nonZeroDays < 2 || historyDaysConsidered < 3) {
+    level = 'low';
+  } else if (nonZeroDays >= 7 && historyDaysConsidered >= 7 && !bursty) {
+    level = 'high';
+    reasonCodes.push('stable_spend_history');
+  }
+
+  return {
+    level,
+    reason_codes: reasonCodes,
+    history_days_considered: historyDaysConsidered,
+    non_zero_days: nonZeroDays,
+    q1_daily_cost_usd: q1,
+    median_daily_cost_usd: median,
+    q3_daily_cost_usd: q3,
+    projected_range_usd: {
+      low: Math.min(roundUsd(q1 * forecastDays), projectedTotalUsd),
+      high: Math.max(roundUsd(q3 * forecastDays), projectedTotalUsd),
+    },
+  };
+}
+
 export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>): CostForecastResult {
   let trend: CostTrendResult | null = null;
   try {
@@ -578,14 +655,14 @@ export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>
   const observedDays = trend ? trend.daily.length : 0;
   const weightedBaseline = !trend || observedDays === 0
     ? 0
-    : trend.daily.reduce((sum, day, index, days) => {
+    : trend.daily.reduce((sum, day, index) => {
         const weight = index + 1;
         return sum + (day.costUsd * weight);
       }, 0) / trend.daily.reduce((sum, _day, index) => sum + index + 1, 0);
-  const baselineDailyCostUsd = Number(weightedBaseline.toFixed(6));
-  const projectedTotalUsd = Number((baselineDailyCostUsd * input.forecastDays).toFixed(2));
-  const projectedMonthlyUsd = Number((baselineDailyCostUsd * 30).toFixed(2));
-  const confidence = observedDays >= 3 ? 'medium' : 'low';
+  const baselineDailyCostUsd = roundUsd(weightedBaseline, 6);
+  const projectedTotalUsd = roundUsd(baselineDailyCostUsd * input.forecastDays);
+  const projectedMonthlyUsd = roundUsd(baselineDailyCostUsd * 30);
+  const forecastConfidence = buildForecastConfidence(trend?.daily ?? [], input.forecastDays, projectedTotalUsd);
   const assumptions = [
     'Forecast uses a deterministic recency-weighted daily average across the local lookback window.',
     'rc.2 remains non-seasonal and local-first; seasonal modeling is intentionally deferred.',
@@ -604,7 +681,8 @@ export function getCostForecast(input: z.infer<typeof costForecastRequestSchema>
     projectedTotalUsd,
     projectedMonthlyUsd,
     method: 'recency-weighted-average-rc2',
-    confidence,
+    confidence: forecastConfidence.level,
+    forecast_confidence: forecastConfidence,
     assumptions,
     _meta: {},
   });
