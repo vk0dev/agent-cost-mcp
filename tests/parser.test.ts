@@ -1,9 +1,11 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { estimateCostUsd } from '../src/pricing.js';
 import { summarizeSessionLogs } from '../src/parser.js';
+import { estimateCostUsd, inferProviderFromModel } from '../src/pricing.js';
 
 const FIXTURES = path.resolve('fixtures');
 
@@ -47,6 +49,7 @@ describe('summarizeSessionLogs', () => {
     expect(summary.turns[2]).toMatchObject({
       assistantId: 'sub-1',
       model: 'claude-opus-4',
+      provider: 'anthropic',
       toolUseCount: 2,
       toolResultCount: 1,
       linkedToolResultCount: 1,
@@ -57,6 +60,34 @@ describe('summarizeSessionLogs', () => {
     expect(summary.totals.cache_read_input_tokens).toBe(125);
     expect(summary.totals.cache_creation_input_tokens).toBe(60);
     expect(summary.totals.tool_use_count).toBe(3);
+  });
+
+  it('infers provider metadata for openai, google, and unknown model families without crashing', () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-parser-provider-'));
+    const sessionPath = path.join(dir, 'session-provider.jsonl');
+    writeFileSync(sessionPath, `${[
+      { type: 'assistant', uuid: 'openai-1', model: 'gpt-5.5', usage: { input_tokens: 1000, output_tokens: 100 }, message: { content: [] } },
+      { type: 'assistant', uuid: 'google-1', model: 'gemini-2.5-pro', usage: { input_tokens: 1000, output_tokens: 100 }, message: { content: [] } },
+      { type: 'assistant', uuid: 'unknown-1', model: 'mystery-model-9000', usage: { input_tokens: 1000, output_tokens: 100 }, message: { content: [] } },
+    ].map((record) => JSON.stringify(record)).join('\n')}\n`);
+
+    const summary = summarizeSessionLogs(sessionPath);
+
+    expect(summary.turns.map((turn) => ({ model: turn.model, provider: turn.provider }))).toEqual([
+      { model: 'gpt-5.5', provider: 'openai' },
+      { model: 'gemini-2.5-pro', provider: 'google' },
+      { model: 'mystery-model-9000', provider: 'unknown' },
+    ]);
+  });
+});
+
+describe('inferProviderFromModel', () => {
+  it('maps bounded provider prefixes deterministically', () => {
+    expect(inferProviderFromModel('claude-sonnet-4')).toBe('anthropic');
+    expect(inferProviderFromModel('gpt-5.5-pro')).toBe('openai');
+    expect(inferProviderFromModel('o3')).toBe('openai');
+    expect(inferProviderFromModel('gemini-2.5-pro')).toBe('google');
+    expect(inferProviderFromModel('mystery-model-9000')).toBe('unknown');
   });
 });
 

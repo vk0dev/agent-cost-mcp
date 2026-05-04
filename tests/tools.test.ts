@@ -77,6 +77,7 @@ describe('get_session_cost', () => {
     expect(result.totals.input_tokens).toBe(2000);
     expect(result.totals.tool_use_count).toBe(1);
     expect(result.totals.estimated_cost_usd).toBeGreaterThan(0);
+    expect(result.providers).toEqual(['anthropic']);
   });
 });
 
@@ -420,6 +421,7 @@ describe('budget controls', () => {
     const payload = result.structuredContent as Record<string, unknown>;
 
     expect(payload.pricingModel).toBe('gpt-5.5');
+    expect(payload.provider).toBe('openai');
     expect(payload._meta).toEqual({});
     expect(payload.promptTokens).toBe(10000);
     expect(payload.cachedInputTokens).toBe(4000);
@@ -471,6 +473,7 @@ describe('budget controls', () => {
     const assumptions = payload.assumptions as string[];
 
     expect(payload.pricingModel).toBe('default');
+    expect(payload.provider).toBe('unknown');
     expect(Number(payload.estimateUsd)).toBeGreaterThan(0);
     expect(assumptions.some((item) => item.includes("Unknown model 'mystery-model-9000' falls back to pricing from 'default'."))).toBe(true);
   });

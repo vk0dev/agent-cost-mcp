@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Pricing } from './types.js';
+import type { Pricing, Provider } from './types.js';
 
 export type PricingTable = Record<string, Pricing>;
 export type WarnFn = (message: string) => void;
@@ -44,6 +44,13 @@ export function loadPricingTable(dir = PRICING_DIR): PricingTable {
     throw new Error('pricing config must include a default model entry');
   }
   return table;
+}
+
+export function inferProviderFromModel(model: string): Provider {
+  if (model.startsWith('claude-')) return 'anthropic';
+  if (model.startsWith('gpt-') || model === 'o1' || model === 'o3' || model === 'o4' || model.startsWith('o1-') || model.startsWith('o3-') || model.startsWith('o4-')) return 'openai';
+  if (model.startsWith('gemini-')) return 'google';
+  return 'unknown';
 }
 
 function parseModelVersion(model: string): { family: string; version?: number } {

@@ -1,3 +1,5 @@
+export type Provider = 'anthropic' | 'openai' | 'google' | 'unknown';
+
 export type Usage = {
   input_tokens: number;
   output_tokens: number;
@@ -14,6 +16,7 @@ export type ParsedTurn = {
   turnIndex: number;
   assistantId?: string;
   model: string;
+  provider: Provider;
   usage: Usage;
   toolUseCount: number;
   toolResultCount: number;

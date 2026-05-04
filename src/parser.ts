@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { estimateCostUsd, DEFAULT_PRICING_TABLE } from './pricing.js';
+import { estimateCostUsd, DEFAULT_PRICING_TABLE, inferProviderFromModel } from './pricing.js';
 import type { ParsedTurn, Pricing, SessionSummary, ToolUseRecord, Usage } from './types.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -100,6 +100,7 @@ function parseJsonlFile(filePath: string, startTurn: number): { turns: ParsedTur
         turnIndex: accumulator.turnIndex,
         assistantId,
         model: accumulator.model,
+        provider: inferProviderFromModel(accumulator.model),
         usage: { ...accumulator.usage },
         toolUseCount: accumulator.toolUses.length,
         toolResultCount: 0,

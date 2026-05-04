@@ -8,7 +8,7 @@ import { summarizeSessionLogs } from '../parser.js';
 import { evaluateBudgetStatus, readBudgetState, writeBudgetState } from '../budget.js';
 import { saveMonitorWebhookConfig } from '../monitorWebhook.js';
 import { getTelemetryClient } from '../telemetryClient.js';
-import { DEFAULT_PRICING_TABLE, estimateCostUsd, findNearestPricingModel } from '../pricing.js';
+import { DEFAULT_PRICING_TABLE, estimateCostUsd, findNearestPricingModel, inferProviderFromModel } from '../pricing.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_PROJECT_PATH = path.resolve('fixtures');
@@ -89,6 +89,7 @@ const sessionCostOutputSchema = z.object({
   sessionPath: z.string(),
   subagentPaths: z.array(z.string()),
   turnCount: z.number().int().nonnegative(),
+  providers: z.array(z.enum(['anthropic', 'openai', 'google', 'unknown'])),
   totals: z.object({
     input_tokens: z.number().nonnegative(),
     output_tokens: z.number().nonnegative(),
@@ -265,6 +266,7 @@ const estimateRunRequestSchema = z.object({
 
 const estimateRunOutputSchema = z.object({
   model: z.string(),
+  provider: z.enum(['anthropic', 'openai', 'google', 'unknown']),
   pricingModel: z.string(),
   estimateUsd: z.number().nonnegative(),
   promptTokens: z.number().int().nonnegative(),
@@ -366,6 +368,7 @@ function buildBudgetAwareSessionResult(summary: ReturnType<typeof summarizeSessi
     sessionPath: summary.sessionPath,
     subagentPaths: summary.subagentPaths,
     turnCount: summary.turns.length,
+    providers: [...new Set(summary.turns.map((turn) => turn.provider))].sort(),
     totals: summary.totals,
     ...budgetStatus,
   };
@@ -814,6 +817,7 @@ export function estimateRunCost(input: z.infer<typeof estimateRunRequestSchema>)
 
   return estimateRunOutputSchema.parse({
     model: input.model,
+    provider: inferProviderFromModel(input.model),
     pricingModel,
     estimateUsd,
     promptTokens,
