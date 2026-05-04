@@ -1,3 +1,9 @@
+## [2.1.0] - 2026-05-04
+
+### Added
+- Added quartile-based `forecast_confidence` with deterministic projected range bounds for sparse, bursty, and stable forecast histories while preserving the existing `recency-weighted-average-rc2` method.
+- Added additive `subtreeCost` rollups to subagent tree nodes so parent nodes surface full descendant spend at a glance.
+
 ## [2.0.1] - 2026-05-04
 
 ### Fixed
