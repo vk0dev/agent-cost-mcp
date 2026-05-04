@@ -1,3 +1,9 @@
+## [2.2.0] - 2026-05-04
+
+### Added
+- Added bounded budget cap enforcement modes so configured caps can stay advisory in `warn` mode or surface a hard refusal signal in `block` mode while preserving response-shape discipline.
+- Added additive multi-provider attribution metadata with deterministic `anthropic`, `openai`, `google`, and `unknown` provider inference through parser and relevant tool output paths.
+
 ## [2.1.0] - 2026-05-04
 
 ### Added
