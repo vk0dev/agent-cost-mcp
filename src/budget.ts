@@ -2,10 +2,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+export type BudgetEnforcementMode = 'warn' | 'block';
+
 export type BudgetState = {
   daily_usd?: number;
   per_session_usd?: number;
   alert_thresholds?: number[];
+  mode?: BudgetEnforcementMode;
   updated_at: string;
 };
 
@@ -22,6 +25,7 @@ export type BudgetStatus = {
   budget_alert?: BudgetAlert;
   hard_capped: boolean;
   hard_cap_message?: string;
+  budget_blocked: boolean;
 };
 
 export function getBudgetStatePath(): string {
@@ -43,6 +47,7 @@ export function writeBudgetState(input: {
   daily_usd?: number;
   per_session_usd?: number;
   alert_thresholds?: number[];
+  mode?: BudgetEnforcementMode;
 }): BudgetState {
   const statePath = getBudgetStatePath();
   mkdirSync(path.dirname(statePath), { recursive: true });
@@ -50,6 +55,7 @@ export function writeBudgetState(input: {
     daily_usd: input.daily_usd,
     per_session_usd: input.per_session_usd,
     alert_thresholds: [...(input.alert_thresholds ?? [50, 80, 100])].sort((a, b) => a - b),
+    mode: input.mode ?? 'warn',
     updated_at: new Date().toISOString(),
   };
   writeFileSync(statePath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
@@ -62,7 +68,7 @@ export function evaluateBudgetStatus(params: {
   dailyCostUsd: number;
 }): BudgetStatus {
   const { budget, sessionCostUsd, dailyCostUsd } = params;
-  if (!budget) return { hard_capped: false };
+  if (!budget) return { hard_capped: false, budget_blocked: false };
 
   const thresholds = budget.alert_thresholds && budget.alert_thresholds.length > 0
     ? [...budget.alert_thresholds].sort((a, b) => a - b)
@@ -102,10 +108,15 @@ export function evaluateBudgetStatus(params: {
 
   const strongest = candidates.sort((a, b) => b.percentUsed - a.percentUsed)[0];
   const hardCapped = candidates.some((candidate) => candidate.percentUsed >= 100);
+  const mode: BudgetEnforcementMode = budget.mode ?? 'warn';
+  const budgetBlocked = hardCapped && mode === 'block';
 
   return {
     budget_alert: strongest,
     hard_capped: hardCapped,
-    hard_cap_message: hardCapped ? 'Configured budget cap reached or exceeded.' : undefined,
+    hard_cap_message: hardCapped
+      ? (budgetBlocked ? 'Configured budget cap reached or exceeded. Blocking further action.' : 'Configured budget cap reached or exceeded.')
+      : undefined,
+    budget_blocked: budgetBlocked,
   };
 }

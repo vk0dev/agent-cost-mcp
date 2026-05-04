@@ -324,12 +324,13 @@ describe('budget controls', () => {
     const configure = server.handlers.get('configure_budget');
     expect(configure).toBeTruthy();
 
-    await configure!({ daily_usd: 10, per_session_usd: 2, alert_thresholds: [80, 50, 100] });
+    await configure!({ daily_usd: 10, per_session_usd: 2, alert_thresholds: [80, 50, 100], mode: 'warn' });
 
     expect(readBudgetState()).toMatchObject({
       daily_usd: 10,
       per_session_usd: 2,
       alert_thresholds: [50, 80, 100],
+      mode: 'warn',
     });
   });
 
@@ -348,7 +349,23 @@ describe('budget controls', () => {
     expect(result.hard_capped).toBe(true);
   });
 
-  it('surfaces hard cap on session cost', async () => {
+  it('keeps over-cap enforcement advisory in warn mode', async () => {
+    const fakeHome = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-budget-home-'));
+    vi.stubEnv('HOME', fakeHome);
+    const server = makeFakeServer();
+    registerTools(server as never);
+    await server.handlers.get('configure_budget')!({ per_session_usd: 0.01, alert_thresholds: [50, 100], mode: 'warn' });
+
+    const projectPath = makeFixtureWorkspace();
+    const result = getSessionCost({ sessionId: 'session-main', projectPath });
+
+    expect(result.budget_alert?.threshold).toBe(100);
+    expect(result.hard_capped).toBe(true);
+    expect(result.hard_cap_message).toMatch(/cap/i);
+    expect(result.budget_blocked).toBe(false);
+  });
+
+  it('defaults omitted mode to the existing advisory behavior', async () => {
     const fakeHome = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-budget-home-'));
     vi.stubEnv('HOME', fakeHome);
     const server = makeFakeServer();
@@ -361,6 +378,32 @@ describe('budget controls', () => {
     expect(result.budget_alert?.threshold).toBe(100);
     expect(result.hard_capped).toBe(true);
     expect(result.hard_cap_message).toMatch(/cap/i);
+    expect(result.budget_blocked).toBe(false);
+  });
+
+  it('returns a hard refusal signal in block mode when the cap is exceeded', async () => {
+    const fakeHome = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-budget-home-'));
+    vi.stubEnv('HOME', fakeHome);
+    const server = makeFakeServer();
+    registerTools(server as never);
+    await server.handlers.get('configure_budget')!({ per_session_usd: 0.01, alert_thresholds: [50, 100], mode: 'block' });
+
+    const projectPath = makeFixtureWorkspace();
+    const result = getSessionCost({ sessionId: 'session-main', projectPath });
+
+    expect(result.budget_alert?.threshold).toBe(100);
+    expect(result.hard_capped).toBe(true);
+    expect(result.budget_blocked).toBe(true);
+    expect(result.hard_cap_message).toMatch(/block/i);
+  });
+
+  it('rejects unsupported budget cap modes', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    await expect(
+      server.handlers.get('configure_budget')!({ per_session_usd: 1, mode: 'pause' }),
+    ).rejects.toThrow();
   });
 
   it('estimates pre-run cost with cache assumptions and budget check', async () => {

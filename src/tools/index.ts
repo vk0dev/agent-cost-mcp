@@ -51,6 +51,7 @@ const configureBudgetRequestSchema = z.object({
   daily_usd: z.number().positive().optional(),
   per_session_usd: z.number().positive().optional(),
   alert_thresholds: z.array(z.number().min(1).max(100)).min(1).optional(),
+  mode: z.enum(['warn', 'block']).optional(),
 });
 
 const configureBudgetOutputSchema = z.object({
@@ -59,6 +60,7 @@ const configureBudgetOutputSchema = z.object({
     daily_usd: z.number().positive().optional(),
     per_session_usd: z.number().positive().optional(),
     alert_thresholds: z.array(z.number()),
+    mode: z.enum(['warn', 'block']),
     updated_at: z.string(),
   }),
 });
@@ -100,6 +102,7 @@ const sessionCostOutputSchema = z.object({
   budget_alert: budgetAlertSchema.optional(),
   hard_capped: z.boolean(),
   hard_cap_message: z.string().optional(),
+  budget_blocked: z.boolean(),
 });
 
 const toolUsageItemSchema = z.object({
@@ -150,6 +153,7 @@ const trendOutputSchema = z.object({
   budget_alert: budgetAlertSchema.optional(),
   hard_capped: z.boolean(),
   hard_cap_message: z.string().optional(),
+  budget_blocked: z.boolean(),
 });
 
 const forecastConfidenceSchema = z.object({
