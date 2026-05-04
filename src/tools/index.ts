@@ -189,6 +189,7 @@ const subagentTreeNodeSchema: z.ZodType<{
   sessionPath: string;
   sessionId: string;
   estimatedCostUsd: number;
+  subtreeCost: number;
   turnCount: number;
   inputTokens: number;
   outputTokens: number;
@@ -198,6 +199,7 @@ const subagentTreeNodeSchema: z.ZodType<{
     sessionPath: z.string(),
     sessionId: z.string(),
     estimatedCostUsd: z.number().nonnegative(),
+    subtreeCost: z.number().nonnegative(),
     turnCount: z.number().int().nonnegative(),
     inputTokens: z.number().nonnegative(),
     outputTokens: z.number().nonnegative(),
@@ -365,16 +367,75 @@ function buildBudgetAwareSessionResult(summary: ReturnType<typeof summarizeSessi
   };
 }
 
-function buildSubagentTreeNode(sessionPath: string, childPaths: string[]): z.infer<typeof subagentTreeNodeSchema> {
-  const summary = summarizeSessionLogs(sessionPath, childPaths);
+function readJsonlRows(sessionPath: string): Array<Record<string, unknown>> {
+  return readFileSync(sessionPath, 'utf8')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+}
+
+function getSessionReferenceIds(sessionPath: string): string[] {
+  const rows = readJsonlRows(sessionPath);
+  const refs = new Set<string>();
+  for (const row of rows) {
+    if (row && typeof row === 'object') {
+      const record = row as Record<string, unknown>;
+      const source = record.sourceToolAssistantUUID;
+      const parent = record.parentUuid;
+      if (typeof source === 'string' && source.trim()) refs.add(source);
+      if (typeof parent === 'string' && parent.trim()) refs.add(parent);
+    }
+  }
+  return [...refs];
+}
+
+function getAssistantIds(sessionPath: string): Set<string> {
+  const rows = readJsonlRows(sessionPath);
+  const ids = new Set<string>();
+  for (const row of rows) {
+    if (row && typeof row === 'object') {
+      const record = row as Record<string, unknown>;
+      if (record.type === 'assistant' && typeof record.uuid === 'string' && record.uuid.trim()) {
+        ids.add(record.uuid);
+      }
+    }
+  }
+  return ids;
+}
+
+function buildChildMap(rootSessionPath: string, allFiles: string[]): Map<string, string[]> {
+  const childMap = new Map<string, string[]>();
+  const assistantIdsByPath = new Map(allFiles.map((file) => [file, getAssistantIds(file)]));
+  for (const file of allFiles) childMap.set(file, []);
+
+  for (const file of allFiles) {
+    if (file === rootSessionPath) continue;
+    const refs = getSessionReferenceIds(file);
+    const parentPath = allFiles.find((candidate) => candidate !== file && refs.some((ref) => assistantIdsByPath.get(candidate)?.has(ref)));
+    const resolvedParent = parentPath ?? rootSessionPath;
+    childMap.set(resolvedParent, [...(childMap.get(resolvedParent) ?? []), file]);
+  }
+
+  return childMap;
+}
+
+function buildSubagentTreeNode(sessionPath: string, childMap: Map<string, string[]>): z.infer<typeof subagentTreeNodeSchema> {
+  const childPaths = childMap.get(sessionPath) ?? [];
+  const summary = summarizeSessionLogs(sessionPath, []);
+  const sessionId = path.basename(summary.sessionPath, path.extname(summary.sessionPath));
+  const children = childPaths.map((childPath) => buildSubagentTreeNode(childPath, childMap));
+  const estimatedCostUsd = Number(summary.totals.estimated_cost_usd.toFixed(6));
+  const subtreeCost = Number((estimatedCostUsd + children.reduce((sum, child) => sum + child.subtreeCost, 0)).toFixed(6));
   return {
-    sessionPath,
-    sessionId: path.basename(sessionPath, '.jsonl'),
-    estimatedCostUsd: summary.totals.estimated_cost_usd,
+    sessionPath: summary.sessionPath,
+    sessionId,
+    estimatedCostUsd,
+    subtreeCost,
     turnCount: summary.turns.length,
     inputTokens: summary.totals.input_tokens,
     outputTokens: summary.totals.output_tokens,
-    children: childPaths.map((childPath) => buildSubagentTreeNode(childPath, [])),
+    children,
   };
 }
 
@@ -387,13 +448,13 @@ export function getSessionCost(input: z.infer<typeof sessionRequestSchema>): Ses
 export function getSubagentTree(input: z.infer<typeof subagentTreeRequestSchema>): SubagentTreeResult {
   const rootSessionPath = resolveSessionFile(input.sessionId, input.projectPath);
   const allFiles = collectJsonlFiles(input.projectPath);
-  const childPaths = allFiles.filter((file) => file !== rootSessionPath);
-  const tree = buildSubagentTreeNode(rootSessionPath, childPaths);
+  const childMap = buildChildMap(rootSessionPath, allFiles);
+  const tree = buildSubagentTreeNode(rootSessionPath, childMap);
   const result = subagentTreeOutputSchema.parse({
     projectPath: resolveProjectPath(input.projectPath),
     rootSessionPath,
-    totalSessions: 1 + childPaths.length,
-    totalCostUsd: tree.estimatedCostUsd,
+    totalSessions: allFiles.length,
+    totalCostUsd: tree.subtreeCost,
     tree,
     _meta: {},
   });
