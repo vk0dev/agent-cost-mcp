@@ -14,7 +14,7 @@
 
 ## Cuándo usarlo
 
-Es un **Cost Guard local** y un conjunto de runtime guardrails para agentes de IA en Claude Code.
+Es un **Cost Guard local** y un conjunto de runtime guardrails para agentes de IA en Claude Code (v2.2.0 incluye modos de budget cap `warn`/`block` y attribution de provider v0).
 
 No sirve solo para responder “¿cuánto costó?”, sino para casos como estos:
 
@@ -176,9 +176,13 @@ Agente: [llama a suggest_optimizations]
 ```
 
 - **El parser** lee los campos de uso por turno (`input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`) directamente de las líneas JSONL que produce Claude Code.
-- **La tabla de precios** (`src/pricing.ts`) contiene tarifas por millón de tokens para `claude-sonnet-4` y `claude-opus-4`, con un fallback `default` para que modelos desconocidos sigan devolviendo un resumen en lugar de fallar.
-- **El servidor MCP** expone cuatro herramientas tipadas sobre stdio, devolviendo tanto texto legible como `structuredContent` validado con Zod.
+- **La tabla de precios** (`src/pricing.ts`) contiene tarifas por millón de tokens para modelos conocidos, con un fallback `default` para que modelos desconocidos sigan devolviendo un resumen en lugar de fallar.
+- **El servidor MCP** expone 11 herramientas tipadas sobre stdio, devolviendo tanto texto legible como `structuredContent` validado con Zod.
 - **Cero tráfico de red.** Sin telemetría, sin clave de API, sin sincronización en la nube. Si desinstalas el paquete, no queda nada.
+
+Notas v2.2.0:
+- Budget caps: modo de enforcement `mode: "warn" | "block"` (en `warn` el comportamiento sigue siendo advisory, en `block` puedes tratar el cap como una señal de rechazo).
+- Provider attribution v0: `anthropic` / `openai` / `google` / `unknown` inferido por prefijo del modelo.
 
 ## Comparación con alternativas
 

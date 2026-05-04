@@ -14,7 +14,7 @@
 
 ## こんなときに使う
 
-Claude Code の AI エージェント向け **ローカル Cost Guard / runtime guardrails** です。
+Claude Code の AI エージェント向け **ローカル Cost Guard / runtime guardrails** です (v2.2.0: budget cap の `warn`/`block` モードと provider attribution v0 を追加)。
 
 単に「いくら使ったか」を見るだけでなく、次のような場面で使います。
 

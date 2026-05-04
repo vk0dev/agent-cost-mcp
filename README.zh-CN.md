@@ -48,7 +48,7 @@
 }
 ```
 
-完全退出并重新启动 Claude Desktop。聊天输入框右下角的 MCP 指示器应该会显示四个新工具。
+完全退出并重新启动 Claude Desktop。聊天输入框右下角的 MCP 指示器应该会显示 11 个新工具。
 
 ### Claude Code
 
@@ -175,9 +175,13 @@ Agent:    [调用 suggest_optimizations]
 ```
 
 - **解析器**直接从 Claude Code 生成的原始 JSONL 行读取每轮的 usage 字段(`input_tokens`、`output_tokens`、`cache_read_input_tokens`、`cache_creation_input_tokens`)。
-- **定价表**(`src/pricing.ts`)保存 `claude-sonnet-4` 和 `claude-opus-4` 每百万 token 的价格,并有 `default` 兜底,保证未知模型也能返回摘要而不是失败。
-- **MCP 服务器**通过 stdio 暴露四个类型化工具,同时返回人类可读文本和经 Zod 校验的 `structuredContent`。
+- **定价表**(`src/pricing.ts`)保存已知模型的每百万 token 价格，并有 `default` 兜底，保证未知模型也能返回摘要而不是失败。
+- **MCP 服务器**通过 stdio 暴露 11 个类型化工具，同时返回人类可读文本和经 Zod 校验的 `structuredContent`。
 - **零网络出口。** 没有遥测、没有 API 密钥、没有云端同步。卸载这个包后什么都不会留下。
+
+v2.2.0 补充：
+- 预算上限支持 enforcement 模式：`mode: "warn" | "block"`（`warn` 保持提示型行为，`block` 可视为硬性拒绝信号）。
+- 增加 provider attribution v0：`anthropic` / `openai` / `google` / `unknown`（按模型前缀确定），便于区分不同 provider 的会话与成本分析。
 
 ## 与其他方案对比
 
