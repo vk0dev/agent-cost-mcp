@@ -1195,7 +1195,7 @@ export function registerTools(server: McpServer): void {
     'get_cost_forecast',
     {
       description:
-        'When to use: project a bounded local cost forecast from recent daily trend data so you can estimate upcoming spend. rc.1 uses a simple linear average, so it does NOT model seasonality, external events, or remote billing feeds.',
+        'When to use: project a bounded local cost forecast from recent daily trend data so you can estimate upcoming spend. The forecast is deterministic, recency-weighted, non-seasonal, and local-first; confidence metadata and sparse-history adjustment may appear, but it does NOT model seasonality, external events, or remote billing feeds.',
       inputSchema: costForecastRequestSchema.shape,
       outputSchema: costForecastOutputSchema.shape,
     },
