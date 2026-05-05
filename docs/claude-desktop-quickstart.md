@@ -42,6 +42,8 @@ Put this under `mcpServers`:
 }
 ```
 
+After saving `claude_desktop_config.json`, fully restart Claude Desktop so it reloads the MCP server list.
+
 If you already have other MCP servers, keep them and add `agent-cost` alongside them.
 
 ## 3. Restart Claude Desktop completely
