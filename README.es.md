@@ -8,6 +8,8 @@
 
 > **Analizador local de costes de Claude Code.** Lee tus logs JSONL de sesiones y muestra gasto por herramienta, tendencia diaria y sugerencias de optimización. Sin nube. Sin clave de API.
 
+> **Superficie actual de la release v2.3.0:** cost guard local, forecast hacia adelante, attribution por provider/model/tool, rollup del árbol de subagentes con `subtreeCost` y signed monitor-webhook alerts sin introducir un hosted control plane.
+
 **Idiomas:** [English](./README.md) · [日本語](./README.ja.md) · [简体中文](./README.zh-CN.md) · [Русский](./README.ru.md) · Español
 
 ---

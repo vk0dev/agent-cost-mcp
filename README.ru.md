@@ -8,6 +8,8 @@
 
 > **Локальный анализатор стоимости Claude Code.** Парсит ваши JSONL-логи сессий, показывает расход по инструментам, дневную динамику и подсказки по оптимизации. Никакого облака. Без API-ключей.
 
+> **Поверхность релиза v2.3.0:** локальный cost guard, forecast вперёд, attribution по provider/model/tool, rollup дерева сабагентов через `subtreeCost` и signed monitor-webhook alerts без hosted control plane.
+
 **Языки:** [English](./README.md) · [日本語](./README.ja.md) · [简体中文](./README.zh-CN.md) · Русский · [Español](./README.es.md)
 
 ---

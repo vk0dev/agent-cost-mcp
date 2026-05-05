@@ -8,6 +8,8 @@
 
 > **本地运行的 Claude Code 成本分析器。** 解析你的 JSONL 会话日志,呈现每个工具的消耗、每日趋势和优化建议。零云端,无需 API 密钥。
 
+> **v2.3.0 的当前发布表面：** 本地 cost guard、forward-looking forecast、按 provider/model/tool 的 attribution、通过 `subtreeCost` 汇总 subagent tree，以及无需 hosted control plane 的 signed monitor-webhook alerts。
+
 **语言:** [English](./README.md) · [日本語](./README.ja.md) · 简体中文 · [Русский](./README.ru.md) · [Español](./README.es.md)
 
 ---

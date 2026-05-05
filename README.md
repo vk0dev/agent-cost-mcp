@@ -2,6 +2,8 @@
 
 Local Cost Guard and runtime guardrails for AI agents in Claude Code.
 
+Current v2.3.0 release surface stays local-first and centered on one job: show where spend is coming from, forecast where it is heading, attribute cost by provider/model/tool, roll up subagent trees with `subtreeCost`, and let operators push signed monitor-webhook alerts without introducing a hosted control plane.
+
 [![npm version](https://img.shields.io/npm/v/@vk0/agent-cost-mcp.svg?style=flat-square)](https://www.npmjs.com/package/@vk0/agent-cost-mcp)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
 [![MCP Registry](https://img.shields.io/badge/MCP-Registry-6633cc.svg?style=flat-square)](https://github.com/modelcontextprotocol/registry)
@@ -134,12 +136,13 @@ Current verified discovery surfaces:
 - **npm:** canonical install path via `npx -y @vk0/agent-cost-mcp`
 - **MCP Registry:** package metadata and registry-facing identity
 - **Smithery:** verified live third-party listing at `https://smithery.ai/servers/unfucker/agent-cost-mcp`
-- **Glama:** verified live product page at `https://glama.ai/mcp/servers/@vk0/agent-cost-mcp`
 - **mcp.so:** verified live product page at `https://mcp.so/server/agent-cost-mcp/vk0dev`
 
-Marketplace metadata quality may differ across discovery surfaces, but Smithery, Glama, and mcp.so all have verified live presence for this package.
+Glama should be treated as unverified for now until its stable product-page URL is re-confirmed.
 
-If you are discovering this package for the first time, the preferred path today is npm for installation and any of Smithery, Glama, or mcp.so for marketplace-style browsing.
+Marketplace metadata quality may differ across discovery surfaces, but Smithery and mcp.so currently have verified live presence for this package.
+
+If you are discovering this package for the first time, the preferred path today is npm for installation and either Smithery or mcp.so for marketplace-style browsing.
 
 ## Claude Code built-in `/cost` vs `@vk0/agent-cost-mcp`
 
@@ -203,6 +206,8 @@ Eleven MCP tools, all operating on local JSONL session logs and all aimed at one
 | **`get_cost_forecast`** | Project a bounded local cost forecast from recent daily trend data so an operator can ask where spend is heading next, not just where it already went; it degrades gracefully when history is still short. |
 
 ![forecast demo: get_cost_forecast showing recency-weighted-average-rc2 local spend projection](docs/demo-forecast.gif)
+
+![forecast fallback demo: sparse-history fallback lowers spike-driven overprojection and adds confidence metadata](docs/demo-forecast-fallback.gif)
 | **`estimate_run_cost`** | Estimate the likely cost of a planned run before execution from prompt, model, and expected tool-call shape, returning `{low, expected, high}` with confidence for pre-spend decisions. |
 
 **Configuration (write):**

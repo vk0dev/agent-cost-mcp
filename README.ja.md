@@ -8,6 +8,8 @@
 
 > **ローカル動作の Claude Code コスト分析ツール。** JSONL セッションログを解析し、ツール別の支出、日次トレンド、最適化のヒントを可視化します。クラウド送信なし。API キー不要。
 
+> **v2.3.0 の現在の表面:** ローカル cost guard、forward-looking forecast、provider/model/tool ごとの attribution、`subtreeCost` による subagent tree の rollup、そして hosted control plane なしの signed monitor-webhook alerts です。
+
 **Languages:** [English](./README.md) · 日本語 · [简体中文](./README.zh-CN.md) · [Русский](./README.ru.md) · [Español](./README.es.md)
 
 ---
