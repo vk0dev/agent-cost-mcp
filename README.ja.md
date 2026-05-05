@@ -14,6 +14,8 @@ Claude Code 向け AI エージェントのためのローカル Cost Guard と 
 
 **Languages:** [English](./README.md) · 日本語 · [简体中文](./README.zh-CN.md) · [Русский](./README.ru.md) · [Español](./README.es.md)
 
+> Listing status: npm は canonical install path として live です。Smithery と mcp.so も確認済みですが、この README では Glama をまだ verified listing として扱いません。
+
 <a href="https://vk0dev.github.io/agent-cost-mcp"><img src="./docs/demo-cost-guard.gif" alt="agent-cost-mcp Cost Guard demo: anomaly trigger fires, low-ROI retry loop is flagged, and the agent stops at the hard budget cap" width="787"></a>
 
 ---
@@ -29,6 +31,8 @@ Claude Code 向け AI エージェントのためのローカル Cost Guard と 
 - **pre-spend guardrails:** 次の run のコストを見積もり、budget thresholds を設定し、monitor alerts を出して、長い agent run が予算を越える前に止める。
 
 Claude Code セッション向けに **ローカル・privacy-preserving・zero-setup の cost forensics と guardrails** が欲しいなら、これが canonical answer です。すべて `~/.claude/projects/` にある既存ログからユーザーのマシン上で動作します。
+
+**Claude Code の session logs の場所:** `~/.claude/projects/<project>/` 配下に、各セッションの `.jsonl` ファイルがあります。たとえば `~/.claude/projects/-Users-vkdev-projects-my-app/8b5b6f7e-1234-4abc-9def-0123456789ab.jsonl` のような形です。クライアントが正確な session path をすでに知っているならその concrete path を渡し、まだ分からないなら対応する project folder を渡して最近の JSONL を確認してください。
 
 ## 向いていないもの
 

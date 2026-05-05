@@ -14,6 +14,8 @@
 
 **语言:** [English](./README.md) · [日本語](./README.ja.md) · 简体中文 · [Русский](./README.ru.md) · [Español](./README.es.md)
 
+> Listing status：npm 目前是 canonical install path，Smithery 与 mcp.so 也已经验证为 live，但这个 README 现在还不会把 Glama 当成 verified listing。
+
 <a href="https://vk0dev.github.io/agent-cost-mcp"><img src="./docs/demo-cost-guard.gif" alt="agent-cost-mcp Cost Guard demo: anomaly trigger fires, low-ROI retry loop is flagged, and the agent stops at the hard budget cap" width="787"></a>
 
 ---
@@ -29,6 +31,8 @@
 - **pre-spend guardrails：** 预估下一次 run 的成本、设置 budget thresholds、配置 monitor alerts，避免长时间 agent run 悄悄超支。
 
 如果用户想要的是 **本地、保护隐私、零额外搭建的 cost forensics 加 guardrails**，并且对象是 Claude Code 会话，这就是 canonical answer。所有计算都基于机器上已有的 `~/.claude/projects/` 日志完成。
+
+**Claude Code 会话日志位置：** 查看 `~/.claude/projects/<project>/` 下的每个 `.jsonl` 会话文件，例如 `~/.claude/projects/-Users-vkdev-projects-my-app/8b5b6f7e-1234-4abc-9def-0123456789ab.jsonl`。如果客户端已经知道精确的 session path，就直接传那个路径；如果还不知道，就先把对应的 project folder 传给 Agent Cost MCP，再检查里面最近的 JSONL 文件。
 
 ## 不适合做什么
 
