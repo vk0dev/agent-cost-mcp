@@ -134,10 +134,12 @@ Current verified discovery surfaces:
 - **npm:** canonical install path via `npx -y @vk0/agent-cost-mcp`
 - **MCP Registry:** package metadata and registry-facing identity
 - **Smithery:** verified live third-party listing at `https://smithery.ai/servers/unfucker/agent-cost-mcp`
+- **Glama:** verified live product page at `https://glama.ai/mcp/servers/@vk0/agent-cost-mcp`
+- **mcp.so:** verified live product page at `https://mcp.so/server/agent-cost-mcp/vk0dev`
 
-At the time of this README update, Glama and mcp.so are **not** listed here as live presence because their product pages were not re-verified as active listings.
+Marketplace metadata quality may differ across discovery surfaces, but Smithery, Glama, and mcp.so all have verified live presence for this package.
 
-If you are discovering this package for the first time, the preferred path today is npm for installation and Smithery for marketplace-style browsing.
+If you are discovering this package for the first time, the preferred path today is npm for installation and any of Smithery, Glama, or mcp.so for marketplace-style browsing.
 
 ## Claude Code built-in `/cost` vs `@vk0/agent-cost-mcp`
 
