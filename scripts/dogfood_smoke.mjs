@@ -3,9 +3,10 @@ import process from 'node:process';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { prepareSmokeFixtureWorkspace } from '../dist/smokeFixtures.js';
 
 const cwd = process.cwd();
-const fixturePath = path.join(cwd, 'fixtures');
+const fixturePath = prepareSmokeFixtureWorkspace(path.join(cwd, 'fixtures'));
 
 function summarizeToolResult(result) {
   const payload = result?.structuredContent ?? {};

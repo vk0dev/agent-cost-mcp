@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readBudgetState } from '../src/budget.js';
 import { resetTelemetryClient, setTelemetryClient } from '../src/telemetryClient.js';
 import { getCostForecast, getCostTrend, getSessionCost, getSubagentTree, getToolUsage, registerTools, suggestOptimizations } from '../src/tools/index.js';
+import { prepareSmokeFixtureWorkspace } from '../src/smokeFixtures.js';
 
 function writeSessionLog(filePath: string, records: Array<Record<string, unknown>>) {
   writeFileSync(filePath, `${records.map((record) => JSON.stringify(record)).join('\n')}\n`);
@@ -165,6 +166,15 @@ describe('get_cost_trend', () => {
     expect(result.totalSessions).toBe(3);
     expect(result.daily.length).toBe(1);
     expect(result.totalCostUsd).toBeGreaterThan(0);
+  });
+
+  it('keeps smoke trend fixtures in-window after deterministic workspace preparation', () => {
+    const projectPath = prepareSmokeFixtureWorkspace(path.join(process.cwd(), 'fixtures'));
+    const result = getCostTrend({ days: 7, projectPath });
+
+    expect(result.totalSessions).toBeGreaterThan(0);
+    expect(result.totalCostUsd).toBeGreaterThan(0);
+    expect(result.daily.some((day) => day.sessions > 0)).toBe(true);
   });
 });
 
