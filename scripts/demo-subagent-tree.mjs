@@ -1,89 +1,138 @@
 #!/usr/bin/env node
-// Demo for the subagent-tree story — the killer differentiator vs ccusage.
-// Runs against fixtures/session-subagent.jsonl (root) which includes
-// demo-anomaly.jsonl as a child branch (the runaway-loop session).
-//
-// Recipe:
-//   asciinema rec -c "node scripts/demo-subagent-tree.mjs" docs/demo-subagent-tree.cast --overwrite
-//   ~/.local/bin/agg --speed 1.0 --theme monokai --font-size 16 \
-//     docs/demo-subagent-tree.cast docs/demo-subagent-tree.gif
+import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import process from 'node:process';
+import { setTimeout as sleep } from 'node:timers/promises';
 
-import { getSubagentTree } from "../dist/tools/index.js";
+import { getSubagentTree } from '../dist/tools/index.js';
 
-const RED = "\x1b[31m";
-const GREEN = "\x1b[32m";
-const YELLOW = "\x1b[33m";
-const CYAN = "\x1b[36m";
-const BOLD = "\x1b[1m";
-const DIM = "\x1b[2m";
-const RESET = "\x1b[0m";
+const REPO_ROOT = process.cwd();
+const FIXTURES = path.join(REPO_ROOT, 'fixtures');
+const TYPE_DELAY_MS = 10;
+const LINE_DELAY_MS = 90;
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function createDemoProject() {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-subagent-demo-'));
+  const mainPath = path.join(tempDir, 'session-main.jsonl');
+  const subagentPath = path.join(tempDir, 'session-subagent.jsonl');
+  const grandchildPath = path.join(tempDir, 'session-grandchild.jsonl');
 
-async function main() {
-  console.log(`${DIM}# An agent dispatched a subagent overnight. Both billed.${RESET}`);
-  console.log(`${DIM}# Which branch burned the budget?${RESET}`);
-  await sleep(2200);
-  console.log();
+  cpSync(path.join(FIXTURES, 'session-main.jsonl'), mainPath);
 
-  console.log(`${BOLD}$ npx -y @vk0/agent-cost-mcp@beta${RESET}`);
-  await sleep(700);
-  console.log(`${DIM}  parsing parent + subagent JSONLs...${RESET}`);
-  await sleep(800);
-  console.log();
+  writeFileSync(
+    subagentPath,
+    [
+      JSON.stringify({
+        type: 'assistant',
+        uuid: 'sub-1',
+        model: 'claude-opus-4',
+        usage: {
+          input_tokens: 420,
+          output_tokens: 160,
+          cache_read_input_tokens: 25,
+          cache_creation_input_tokens: 10,
+        },
+        message: {
+          content: [
+            { type: 'tool_use', id: 'toolu_sub_1', name: 'Read' },
+            { type: 'tool_use', id: 'toolu_sub_2', name: 'Grep' },
+          ],
+        },
+      }),
+      JSON.stringify({
+        type: 'user',
+        sourceToolAssistantUUID: 'asst-1',
+        message: { content: [{ type: 'text', text: 'spawned from root session' }] },
+      }),
+      JSON.stringify({
+        type: 'user',
+        sourceToolAssistantUUID: 'sub-1',
+        message: {
+          content: [{ type: 'tool_result', tool_use_id: 'toolu_sub_1', content: 'match' }],
+        },
+      }),
+    ].join('\n') + '\n',
+  );
 
-  console.log(`${CYAN}${BOLD}>>> get_subagent_tree(session)${RESET}`);
-  await sleep(700);
+  writeFileSync(
+    grandchildPath,
+    [
+      JSON.stringify({
+        type: 'assistant',
+        uuid: 'grand-1',
+        model: 'claude-haiku-4',
+        usage: {
+          input_tokens: 160,
+          output_tokens: 80,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+        },
+        message: { content: [{ type: 'text', text: 'grandchild done' }] },
+      }),
+      JSON.stringify({
+        type: 'user',
+        sourceToolAssistantUUID: 'sub-1',
+        message: { content: [{ type: 'text', text: 'spawned from subagent' }] },
+      }),
+    ].join('\n') + '\n',
+  );
 
-  const result = getSubagentTree({
-    sessionPath: "fixtures/session-subagent.jsonl",
-    subagentPaths: ["fixtures/session-main.jsonl", "fixtures/demo-anomaly.jsonl"],
-  });
-
-  const total = result.totalCostUsd;
-  console.log(`  ${BOLD}total: $${total.toFixed(2)}${RESET}  across ${result.totalSessions} sessions`);
-  console.log();
-  await sleep(900);
-
-  // Render the tree, branch by branch.
-  function render(node, prefix, isLast, isRoot) {
-    const cost = node.estimatedCostUsd;
-    const share = (cost / total) * 100;
-    const colour = share > 80 ? RED : share > 30 ? YELLOW : GREEN;
-    const branch = isRoot ? "" : isLast ? "└── " : "├── ";
-    const childPrefix = isRoot ? "" : isLast ? "    " : "│   ";
-    const label = node.sessionId.padEnd(20);
-    const cstr = `$${cost.toFixed(2)}`.padStart(7);
-    const pct = `${share.toFixed(0)}%`.padStart(4);
-    const line = `${prefix}${branch}${BOLD}${label}${RESET}  ${colour}${cstr}${RESET}  ${DIM}(${pct} of total)${RESET}`;
-    console.log(line);
-    const kids = node.children || [];
-    for (let i = 0; i < kids.length; i++) {
-      render(kids[i], prefix + childPrefix, i === kids.length - 1, false);
-    }
-  }
-  render(result.tree, "  ", true, true);
-  await sleep(2200);
-
-  console.log();
-  console.log(`${RED}${BOLD}  ⚠ demo-anomaly subagent ate 99% of the spend.${RESET}`);
-  console.log(`${RED}${BOLD}    Without this view, you'd see only the rollup ($8.69) and${RESET}`);
-  console.log(`${RED}${BOLD}    miss which child agent went sideways.${RESET}`);
-  await sleep(2400);
-
-  console.log();
-  console.log(`${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
-  console.log(`${BOLD}ccusage gives you a flat table.${RESET}`);
-  console.log(`${BOLD}${GREEN}agent-cost-mcp${RESET}${BOLD} gives you the tree, structured.${RESET}`);
-  console.log(`${DIM}MCP-native output — your client can render this directly.${RESET}`);
-  console.log(`${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
-  await sleep(1800);
-  console.log();
-  console.log(`${DIM}npx -y @vk0/agent-cost-mcp@beta · v2.0.0-beta.6${RESET}`);
-  await sleep(1500);
+  return { tempDir, mainPath };
 }
 
-main().catch((e) => {
-  console.error("demo failed:", e);
+function compactTree(tree) {
+  return {
+    sessionId: tree.sessionId,
+    estimatedCostUsd: tree.estimatedCostUsd,
+    subtreeCost: tree.subtreeCost,
+    turnCount: tree.turnCount,
+    children: tree.children.map(compactTree),
+  };
+}
+
+async function typeLine(text) {
+  for (const char of text) {
+    process.stdout.write(char);
+    await sleep(TYPE_DELAY_MS);
+  }
+  process.stdout.write('\n');
+}
+
+async function printBlock(lines) {
+  for (const line of lines) {
+    console.log(line);
+    await sleep(LINE_DELAY_MS);
+  }
+}
+
+async function main() {
+  const { tempDir, mainPath } = createDemoProject();
+  try {
+    const result = getSubagentTree({ projectPath: tempDir, sessionPath: mainPath });
+    const view = {
+      sessionCount: result.sessionCount,
+      totalCostUsd: result.totalCostUsd,
+      tree: compactTree(result.tree),
+    };
+
+    await printBlock([
+      '\u001b[2m# A delegated run finished overnight. Which branch burned the budget?\u001b[0m',
+      '',
+    ]);
+    await typeLine('$ npx -y @vk0/agent-cost-mcp get_subagent_tree --session session-main.jsonl');
+    await sleep(250);
+    await printBlock(JSON.stringify(view, null, 2).split('\n'));
+    await printBlock([
+      '',
+      '\u001b[32m# subtreeCost makes the expensive branch obvious fast.\u001b[0m',
+    ]);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });
