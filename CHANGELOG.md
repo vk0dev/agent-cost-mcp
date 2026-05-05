@@ -1,3 +1,8 @@
+## [2.3.0] - 2026-05-04
+
+### Added
+- Added bounded sparse-history forecast fallback heuristics with additive adjustment metadata so short, bursty histories can reduce rc2 overshoot without changing the deterministic local-first forecast method.
+
 ## [2.2.0] - 2026-05-04
 
 ### Added
