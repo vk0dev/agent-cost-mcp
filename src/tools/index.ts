@@ -423,11 +423,15 @@ function buildChildMap(rootSessionPath: string, allFiles: string[]): Map<string,
     if (file === rootSessionPath) continue;
     const refs = getSessionReferenceIds(file);
     const parentPath = allFiles.find((candidate) => candidate !== file && refs.some((ref) => assistantIdsByPath.get(candidate)?.has(ref)));
-    const resolvedParent = parentPath ?? rootSessionPath;
-    childMap.set(resolvedParent, [...(childMap.get(resolvedParent) ?? []), file]);
+    if (!parentPath) continue;
+    childMap.set(parentPath, [...(childMap.get(parentPath) ?? []), file]);
   }
 
   return childMap;
+}
+
+function countTreeNodes(node: z.infer<typeof subagentTreeNodeSchema>): number {
+  return 1 + node.children.reduce((sum, child) => sum + countTreeNodes(child), 0);
 }
 
 function buildSubagentTreeNode(sessionPath: string, childMap: Map<string, string[]>): z.infer<typeof subagentTreeNodeSchema> {
@@ -463,7 +467,7 @@ export function getSubagentTree(input: z.infer<typeof subagentTreeRequestSchema>
   const result = subagentTreeOutputSchema.parse({
     projectPath: resolveProjectPath(input.projectPath),
     rootSessionPath,
-    totalSessions: allFiles.length,
+    totalSessions: countTreeNodes(tree),
     totalCostUsd: tree.subtreeCost,
     tree,
     _meta: {},
@@ -893,7 +897,8 @@ export function estimateRunCost(input: z.infer<typeof estimateRunRequestSchema>)
 
 export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>): AnomalyResult {
   const trend = getCostTrend({ projectPath: input.projectPath, days: input.days });
-  const files = collectJsonlFiles(input.projectPath);
+  const now = Date.now();
+  const files = collectJsonlFiles(input.projectPath).filter((file) => now - statSync(file).mtimeMs <= input.days * DAY_MS);
   const runawayWindow = input.recentTurnWindow;
 
   let runawayDetected = false;

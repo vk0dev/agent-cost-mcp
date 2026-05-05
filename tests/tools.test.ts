@@ -103,17 +103,16 @@ describe('get_subagent_tree', () => {
     const projectPath = makeFixtureWorkspace();
     const result = getSubagentTree({ sessionId: 'session-main', projectPath });
     expect(result.projectPath).toBe(projectPath);
-    expect(result.totalSessions).toBe(3);
+    expect(result.totalSessions).toBe(1);
     expect(result._meta).toEqual({});
     expect(result.tree.sessionId).toBe('session-main');
-    expect(result.tree.children).toHaveLength(2);
-    expect(result.tree.children.map((child) => child.sessionId).sort()).toEqual(['demo-anomaly', 'session-subagent']);
+    expect(result.tree.children).toHaveLength(0);
     expect(result.totalCostUsd).toBeGreaterThan(0);
 
     const toolResult = await server.handlers.get('get_subagent_tree')!({ sessionId: 'session-main', projectPath });
     const payload = toolResult.structuredContent as Record<string, unknown>;
     expect(payload._meta).toEqual({});
-    expect(payload.totalSessions).toBe(3);
+    expect(payload.totalSessions).toBe(1);
   });
 
   it('keeps _meta and uses the local telemetry client only when telemetry is opted in', () => {
@@ -147,11 +146,9 @@ describe('get_subagent_tree', () => {
 
     const result = getSubagentTree({ sessionId: 'session-main', projectPath });
 
-    expect(result.totalSessions).toBe(2);
+    expect(result.totalSessions).toBe(1);
     expect(result.tree.sessionId).toBe('session-main');
-    expect(result.tree.children).toHaveLength(1);
-    expect(result.tree.children[0]?.sessionId).toBe('session-main-alias');
-    expect(result.tree.children[0]?.children).toEqual([]);
+    expect(result.tree.children).toHaveLength(0);
     expect(result.totalCostUsd).toBeGreaterThan(0);
   });
 });
@@ -488,6 +485,26 @@ describe('budget controls', () => {
     expect(assumptions.some((item) => item.includes("Unknown model 'mystery-model-9000' falls back to pricing from 'default'."))).toBe(true);
   });
 
+  it('uses nearest-family pricing for missing exact model ids without collapsing to default', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const result = await server.handlers.get('estimate_run_cost')!({
+      model: 'claude-haiku-4',
+      prompt_tokens: 1800,
+      expected_output_tokens: 300,
+      cached_input_tokens: 200,
+    });
+    const payload = result.structuredContent as Record<string, unknown>;
+    const assumptions = payload.assumptions as string[];
+
+    expect(payload.provider).toBe('anthropic');
+    expect(payload.pricingModel).not.toBe('default');
+    expect(String(payload.pricingModel)).toContain('claude-haiku');
+    expect(Number(payload.estimateUsd)).toBeGreaterThan(0);
+    expect(assumptions.some((item) => item.includes("Unknown model 'claude-haiku-4' falls back to pricing from '"))).toBe(true);
+  });
+
   it('ranks lower-roi tools first using linked results versus cost share', async () => {
     const server = makeFakeServer();
     registerTools(server as never);
@@ -594,6 +611,29 @@ describe('budget controls', () => {
     expect(payload.baselineDailyCostUsd).toBe(0);
     expect(payload.anomalies).toEqual([]);
     expect(payload.runaway_detected).toBe(false);
+  });
+
+  it('ignores stale runaway-only logs that fall completely outside the anomaly lookback window', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-anomaly-stale-runaway-'));
+    const sessionPath = path.join(projectPath, 'session-stale-loop.jsonl');
+    writeSessionLog(
+      sessionPath,
+      Array.from({ length: 10 }, (_, index) => assistantToolUseRecord(`stale-loop-${index}`, 'web_search', { query: 'expired loop' })),
+    );
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    utimesSync(sessionPath, tenDaysAgo, tenDaysAgo);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 1, minDailyCostUsd: 0, recentTurnWindow: 10 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload._meta).toEqual({});
+    expect(payload.baselineDailyCostUsd).toBe(0);
+    expect(payload.anomalies).toEqual([]);
+    expect(payload.runaway_detected).toBe(false);
+    expect(payload.runaway_reason_code).toBeUndefined();
   });
 
   it('keeps zero-cost days out of anomaly output even when all observed usage is zero', async () => {
