@@ -221,6 +221,8 @@ Eleven MCP tools, all operating on local JSONL session logs and all aimed at one
 ![budget cap demo](docs/demo-budget-cap.gif)
 | **`set_monitor_webhook`** | Register an HMAC-signed webhook target for anomaly alerts, budget threshold crossings, and runaway flags so Cost Guard signals can leave the local session and reach an operator workflow when needed. |
 
+Monitor alerts do not work until `set_monitor_webhook` has saved both the webhook URL and secret in the local monitor config at `~/.agent-cost-mcp/monitor-webhook.json`.
+
 <details>
 <summary><strong>Example: <code>get_session_cost</code> output</strong></summary>
 
