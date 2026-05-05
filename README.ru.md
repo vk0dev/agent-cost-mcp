@@ -2,7 +2,7 @@
 
 Локальный Cost Guard и runtime guardrails для AI-агентов в Claude Code.
 
-Текущая поверхность релиза v2.3.0 остаётся local-first и сосредоточена на одной задаче: показать, откуда именно берутся расходы, куда они движутся, как распределяется стоимость по provider/model/tool, как сворачивать деревья сабагентов через `subtreeCost`, и как отправлять signed monitor-webhook alerts без hosted control plane.
+Текущая поверхность релиза v2.3.0 остаётся local-first и сосредоточена на одной операторской задаче: показать, откуда именно берутся расходы, куда они движутся, как распределяется стоимость по provider/model/tool, как сворачивать деревья сабагентов через `subtreeCost`, и как отправлять signed monitor-webhook alerts без hosted control plane.
 
 [![npm version](https://img.shields.io/npm/v/@vk0/agent-cost-mcp.svg?style=flat-square)](https://www.npmjs.com/package/@vk0/agent-cost-mcp)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
