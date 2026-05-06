@@ -180,6 +180,11 @@ Claude Code の built-ins はその場の quick visibility に使い、次の問
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
+すでに shipped 済みで、すぐ確認できる demo assets:
+
+- [Forecast / cap-hit demo GIF](./docs/demo-forecast.gif) for the current `get_cost_forecast` operator story
+- [Subagent-tree cost demo GIF](./docs/demo-subagent-tree.gif) for the current `get_subagent_tree` branch-cost story
+
 ## ツール
 
 11 個の MCP ツールはすべてローカル JSONL セッションログ上で動き、ひとつの Cost Guard の問いに集中しています。コストはどこに溜まっているのか、今のパターンはどれほど危険か、オペレーターや agent は何を変えるべきか, です。

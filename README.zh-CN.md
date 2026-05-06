@@ -180,6 +180,11 @@ Claude Code 本身已经提供了有用的基础成本可视化。`@vk0/agent-co
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
+已经 shipped、可以快速查看的 demo assets：
+
+- [Forecast / cap-hit demo GIF](./docs/demo-forecast.gif)，对应当前 `get_cost_forecast` operator story
+- [Subagent-tree cost demo GIF](./docs/demo-subagent-tree.gif)，对应当前 `get_subagent_tree` branch-cost story
+
 ## 工具
 
 共有 11 个 MCP 工具，它们都操作本地 JSONL 会话日志，并围绕同一个 Cost Guard 问题工作：成本在什么地方累积、当前模式有多危险、operator 或 agent 下一步该改什么。

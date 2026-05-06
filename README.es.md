@@ -180,6 +180,11 @@ Si quieres flujos de operador concretos en vez del reference completo, empieza a
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
+Demo assets ya shipped que puedes revisar rápido:
+
+- [Forecast / cap-hit demo GIF](./docs/demo-forecast.gif) para el operator story actual de `get_cost_forecast`
+- [Subagent-tree cost demo GIF](./docs/demo-subagent-tree.gif) para el branch-cost story actual de `get_subagent_tree`
+
 ## Herramientas
 
 Once herramientas MCP, todas operando sobre logs JSONL locales y todas enfocadas en una sola pregunta de Cost Guard: dónde se está acumulando el gasto, qué tan riesgoso es el patrón actual y qué debería cambiar el operator o el agente a continuación.

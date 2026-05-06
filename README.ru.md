@@ -180,6 +180,11 @@ Claude Code уже даёт полезную базовую видимость �
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
 
+Уже shipped demo assets, которые можно быстро посмотреть:
+
+- [Forecast / cap-hit demo GIF](./docs/demo-forecast.gif) для текущего operator story вокруг `get_cost_forecast`
+- [Subagent-tree cost demo GIF](./docs/demo-subagent-tree.gif) для текущего branch-cost story вокруг `get_subagent_tree`
+
 ## Инструменты
 
 Одиннадцать MCP-инструментов, все работают по локальным JSONL-логам сессий и все завязаны на один вопрос Cost Guard: где накапливается стоимость, насколько рискован текущий паттерн и что оператору или агенту стоит поменять дальше?
