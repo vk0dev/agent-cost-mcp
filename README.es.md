@@ -2,7 +2,7 @@
 
 Cost Guard local y runtime guardrails para agentes de IA en Claude Code.
 
-La superficie actual de la release v2.3.0 sigue siendo local-first y está centrada en una sola misión orientada al operador: mostrar de dónde viene el gasto, hacia dónde se dirige, atribuir coste por provider/model/tool, resumir árboles de subagentes con `subtreeCost` y permitir signed monitor-webhook alerts sin introducir un hosted control plane.
+La superficie actual de la release v2.3.1 sigue siendo local-first y está centrada en una sola misión orientada al operador: mostrar de dónde viene el gasto, hacia dónde se dirige, atribuir coste por provider/model/tool, resumir árboles de subagentes con `subtreeCost` y permitir signed monitor-webhook alerts sin introducir un hosted control plane.
 
 [![npm version](https://img.shields.io/npm/v/@vk0/agent-cost-mcp.svg?style=flat-square)](https://www.npmjs.com/package/@vk0/agent-cost-mcp)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)

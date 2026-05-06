@@ -2,7 +2,7 @@
 
 面向 Claude Code 中 AI agent 的本地 Cost Guard 与 runtime guardrails。
 
-当前 v2.3.0 的发布表面保持 local-first，并且聚焦一个 operator-facing 的核心工作：弄清成本到底来自哪里、接下来会往哪里走、如何按 provider/model/tool 做 attribution、如何通过 `subtreeCost` 汇总 subagent tree，以及如何在不引入 hosted control plane 的前提下推送 signed monitor-webhook alerts。
+当前 v2.3.1 的发布表面保持 local-first，并且聚焦一个 operator-facing 的核心工作：弄清成本到底来自哪里、接下来会往哪里走、如何按 provider/model/tool 做 attribution、如何通过 `subtreeCost` 汇总 subagent tree，以及如何在不引入 hosted control plane 的前提下推送 signed monitor-webhook alerts。
 
 [![npm version](https://img.shields.io/npm/v/@vk0/agent-cost-mcp.svg?style=flat-square)](https://www.npmjs.com/package/@vk0/agent-cost-mcp)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
