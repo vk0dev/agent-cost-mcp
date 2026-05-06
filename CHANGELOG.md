@@ -1,3 +1,9 @@
+## [2.3.1] - 2026-05-06
+
+### Fixed
+- Reduced runaway false positives by suppressing short transient-failure clusters that recover quickly on the same tool.
+- Reduced runaway false positives for productive same-tool refinement when targets narrow meaningfully without turning into retry storms.
+
 ## [2.3.0] - 2026-05-04
 
 ### Added
