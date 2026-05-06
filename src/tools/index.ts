@@ -492,6 +492,50 @@ function hasMeaningfulSameToolNovelty(
   return targetValues.size >= minDistinctTargets;
 }
 
+function tokenCount(value: string): number {
+  return normalizeNoveltyText(value)
+    .split(' ')
+    .filter(Boolean)
+    .length;
+}
+
+function hasMonotonicSameToolNarrowing(
+  turns: Array<{ toolNameSignature: string; inputSignature: string; successCount: number; errorCount: number }>,
+  minDistinctTargets = 3,
+): boolean {
+  const toolNames = new Set(turns.map((turn) => turn.toolNameSignature));
+  if (toolNames.size !== 1) {
+    return false;
+  }
+
+  if (turns.some((turn) => turn.errorCount > 0 || turn.successCount > 0)) {
+    // Require soft/non-terminal results only: no hard errors, and no fully successful completion signal.
+    if (turns.some((turn) => turn.errorCount > 0)) {
+      return false;
+    }
+  }
+
+  const primaryTargets = turns
+    .map((turn) => extractTargetNoveltyValues(turn.inputSignature).sort()[0] ?? '')
+    .filter(Boolean);
+
+  const distinctTargets = new Set(primaryTargets);
+  if (primaryTargets.length !== turns.length || distinctTargets.size < minDistinctTargets) {
+    return false;
+  }
+
+  let narrowingSteps = 0;
+  for (let i = 1; i < primaryTargets.length; i += 1) {
+    const prev = primaryTargets[i - 1]!;
+    const next = primaryTargets[i]!;
+    if (next !== prev && tokenCount(next) >= tokenCount(prev) && next.includes(prev.split(':', 2)[1] ?? '')) {
+      narrowingSteps += 1;
+    }
+  }
+
+  return narrowingSteps >= Math.max(2, turns.length - 2);
+}
+
 function getSessionReferenceIds(sessionPath: string): string[] {
   const rows = readJsonlRows(sessionPath);
   const refs = new Set<string>();
@@ -1069,7 +1113,8 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
     const recoveredTransientFailure = hasBoundedRecoveryAfterTransientFailure(recent);
     const sameToolOnly = new Set(recent.map((entry) => entry.toolNameSignature)).size === 1;
     const meaningfulSameToolNovelty = hasMeaningfulSameToolNovelty(recent);
-    const likelySameToolDeadEnd = sameToolOnly && (allSameSignature || !meaningfulSameToolNovelty);
+    const monotonicSameToolNarrowing = hasMonotonicSameToolNarrowing(recent);
+    const likelySameToolDeadEnd = sameToolOnly && (allSameSignature || (!meaningfulSameToolNovelty && !monotonicSameToolNarrowing));
 
     if (!recoveredTransientFailure && allNoSuccess && likelySameToolDeadEnd) {
       runawayDetected = true;

@@ -840,6 +840,33 @@ describe('budget controls', () => {
     expect(payload.runaway_reason_code).toBeUndefined();
   });
 
+  it('does not flag monotonic same-tool narrowing when soft partial clues keep tightening scope', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-monotonic-narrowing-'));
+    writeSessionLog(path.join(projectPath, 'session-monotonic-narrowing.jsonl'), [
+      assistantToolUseRecord('search-1', 'web_search', { query: 'claude code spend issue' }),
+      userToolResultRecord('search-1', { text: 'broad discussion thread' }),
+      assistantToolUseRecord('search-2', 'web_search', { query: 'claude code spend issue cache_read_tokens' }),
+      userToolResultRecord('search-2', { text: 'partial clue about cache reads' }),
+      assistantToolUseRecord('search-3', 'web_search', { query: 'claude code spend issue cache_read_tokens jsonl' }),
+      userToolResultRecord('search-3', { text: 'partial clue about JSONL logs' }),
+      assistantToolUseRecord('search-4', 'web_search', { query: 'claude code spend issue cache_read_tokens jsonl budget' }),
+      userToolResultRecord('search-4', { text: 'budget guard mention' }),
+      assistantToolUseRecord('search-5', 'web_search', { query: 'claude code spend issue cache_read_tokens jsonl budget webhook' }),
+      userToolResultRecord('search-5', { text: 'webhook follow-up clue' }),
+      assistantToolUseRecord('search-6', 'web_search', { query: 'claude code spend issue cache_read_tokens jsonl budget webhook threshold' }),
+      userToolResultRecord('search-6', { text: 'threshold clue, still narrowing' }),
+    ]);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 6 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(false);
+    expect(payload.runaway_reason_code).toBeUndefined();
+  });
+
   it('still flags superficial same-tool churn when the underlying dead end has not changed', async () => {
     const server = makeFakeServer();
     registerTools(server as never);
