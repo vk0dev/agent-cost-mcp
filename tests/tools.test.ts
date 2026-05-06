@@ -761,6 +761,58 @@ describe('budget controls', () => {
     expect(payload.runaway_reason_code).toBeUndefined();
   });
 
+  it('does not flag a short transient-failure cluster that recovers on the same tool', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-transient-recovery-'));
+    writeSessionLog(path.join(projectPath, 'session-transient-recovery.jsonl'), [
+      assistantToolUseRecord('retry-1', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-1', { isError: true, text: '429 rate limited' }),
+      assistantToolUseRecord('retry-2', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-2', { isError: true, text: 'timeout' }),
+      assistantToolUseRecord('retry-3', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-3', { text: 'service recovered with docs link' }),
+      assistantToolUseRecord('retry-4', 'web_search', { query: 'status api limits' }),
+      userToolResultRecord('retry-4', { text: 'quota details returned' }),
+    ]);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 4 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(false);
+    expect(payload.runaway_reason_code).toBeUndefined();
+  });
+
+  it('still flags a retry storm when any recovery arrives too late', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-late-recovery-'));
+    writeSessionLog(path.join(projectPath, 'session-late-recovery.jsonl'), [
+      assistantToolUseRecord('recover-early', 'web_search', { query: 'status api narrow' }),
+      userToolResultRecord('recover-early', { text: 'temporary recovery' }),
+      assistantToolUseRecord('retry-1', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-1', { isError: true, text: '429 rate limited' }),
+      assistantToolUseRecord('retry-2', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-2', { isError: true, text: 'timeout' }),
+      assistantToolUseRecord('retry-3', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-3', { isError: true, text: 'still unavailable' }),
+      assistantToolUseRecord('retry-4', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-4', { isError: true, text: 'rate limited again' }),
+      assistantToolUseRecord('retry-5', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-5', { isError: true, text: 'no recovery yet' }),
+      assistantToolUseRecord('retry-6', 'web_search', { query: 'status api' }),
+      userToolResultRecord('retry-6', { isError: true, text: 'still failing' }),
+    ]);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 6 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(true);
+    expect(payload.runaway_reason_code).toBe('retry_storm_no_adaptation');
+  });
+
   it('does not flag productive repeated tool use across fan-out style work', async () => {
     const server = makeFakeServer();
     registerTools(server as never);

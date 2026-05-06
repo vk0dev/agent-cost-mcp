@@ -385,6 +385,46 @@ function readJsonlRows(sessionPath: string): Array<Record<string, unknown>> {
     .map((line) => JSON.parse(line) as Record<string, unknown>);
 }
 
+function hasBoundedRecoveryAfterTransientFailure(
+  turns: Array<{ toolNameSignature: string; successCount: number; errorCount: number }>,
+  maxErrorStreak = 3,
+  maxTurnsUntilRecovery = 2,
+): boolean {
+  for (let start = 0; start < turns.length; start += 1) {
+    const firstTurn = turns[start];
+    if (!firstTurn || firstTurn.errorCount === 0 || firstTurn.successCount > 0) {
+      continue;
+    }
+
+    let streakLength = 0;
+    while (
+      start + streakLength < turns.length
+      && turns[start + streakLength]?.toolNameSignature === firstTurn.toolNameSignature
+      && (turns[start + streakLength]?.errorCount ?? 0) > 0
+      && (turns[start + streakLength]?.successCount ?? 0) === 0
+    ) {
+      streakLength += 1;
+    }
+
+    if (streakLength === 0 || streakLength > maxErrorStreak) {
+      continue;
+    }
+
+    const recoverySearchEnd = Math.min(turns.length, start + streakLength + maxTurnsUntilRecovery);
+    for (let recoveryIndex = start + streakLength; recoveryIndex < recoverySearchEnd; recoveryIndex += 1) {
+      const recoveryTurn = turns[recoveryIndex];
+      if (
+        recoveryTurn?.toolNameSignature === firstTurn.toolNameSignature
+        && (recoveryTurn.successCount ?? 0) > 0
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 function getSessionReferenceIds(sessionPath: string): string[] {
   const rows = readJsonlRows(sessionPath);
   const refs = new Set<string>();
@@ -959,8 +999,9 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
     const repeatedHardErrors = recent.every((entry) => entry.errorCount > 0);
     const alternatingTwoSignatureCycle = recent.every((entry, index) => entry.signature === recent[index % 2]?.signature)
       && new Set(recent.map((entry) => entry.signature)).size === 2;
+    const recoveredTransientFailure = hasBoundedRecoveryAfterTransientFailure(recent);
 
-    if (allNoSuccess && allSameSignature) {
+    if (!recoveredTransientFailure && allNoSuccess && allSameSignature) {
       runawayDetected = true;
       runawaySignature = recent[0]?.toolNameSignature;
       runawayReasonCode = repeatedHardErrors ? 'retry_storm_no_adaptation' : 'identical_signature_no_progress';
@@ -970,7 +1011,7 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
       break;
     }
 
-    if (allNoSuccess && alternatingTwoSignatureCycle) {
+    if (!recoveredTransientFailure && allNoSuccess && alternatingTwoSignatureCycle) {
       runawayDetected = true;
       runawaySignature = [...new Set(recent.map((entry) => entry.toolNameSignature))].join(' -> ');
       runawayReasonCode = 'alternating_cycle_no_progress';
