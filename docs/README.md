@@ -35,6 +35,10 @@ Use the [budget cap recipe](./budget-cap-recipe.md) for the full walkthrough. Th
 
 A practical starting pattern is to set both: 80% for warning, 100% for enforcement.
 
+## Subagent-tree workflow
+
+Open the [subagent tree guide](./subagent-tree-guide.md) when you need to see where nested spend is accumulating across a parent session and its child runs. The quick read is: use `get_subagent_tree` to inspect the local tree shape first, then read each branch's `subtreeCost` rollup before deciding which child path is actually driving the cost.
+
 ## What this docs index does not replace
 
 This page is a shortcut. For installation details, full tool reference, and broader product context, go back to the [project README](../README.md).
