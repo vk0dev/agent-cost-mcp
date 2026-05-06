@@ -1211,7 +1211,7 @@ export function registerTools(server: McpServer): void {
     'detect_cost_anomalies',
     {
       description:
-        'Flag unusually high or low daily cost spikes against the recent local baseline for a project. Does NOT stream alerts continuously, infer root cause automatically, or replace longer-term monitoring.',
+        'Flag unusually high or low daily cost spikes against the recent local baseline for a project. Does NOT stream alerts continuously, infer root cause automatically, or act as a longer-term monitoring system.',
       inputSchema: anomalyRequestSchema.shape,
       outputSchema: anomalyOutputSchema.shape,
     },
@@ -1244,7 +1244,7 @@ export function registerTools(server: McpServer): void {
     'suggest_optimizations',
     {
       description:
-        'Generate lightweight optimization suggestions from one parsed session log after cost or tool-usage review. Does NOT rewrite prompts automatically, inspect source code, or replace a full human performance audit.',
+        'Generate lightweight optimization suggestions from one parsed session log after cost or tool-usage review. Does NOT rewrite prompts automatically, inspect source code, or stand in for a full human performance audit.',
       inputSchema: sessionRequestSchema.shape,
       outputSchema: suggestionsOutputSchema.shape,
     },
