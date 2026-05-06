@@ -2,7 +2,7 @@
 
 Local Cost Guard and runtime guardrails for AI agents in Claude Code.
 
-Current v2.3.0 release surface stays local-first and centered on one operator-facing job: show where spend is coming from, forecast where it is heading, attribute cost by provider/model/tool, roll up subagent trees with `subtreeCost`, and let operators push signed monitor-webhook alerts without introducing a hosted control plane.
+Current v2.3.1 release surface stays local-first and centered on one operator-facing job: show where spend is coming from, forecast where it is heading, attribute cost by provider/model/tool, roll up subagent trees with `subtreeCost`, and let operators push signed monitor-webhook alerts without introducing a hosted control plane.
 
 [![npm version](https://img.shields.io/npm/v/@vk0/agent-cost-mcp.svg?style=flat-square)](https://www.npmjs.com/package/@vk0/agent-cost-mcp)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
