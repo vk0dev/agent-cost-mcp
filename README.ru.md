@@ -10,7 +10,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/vk0dev/agent-cost-mcp/ci.yml?branch=main&style=flat-square)](https://github.com/vk0dev/agent-cost-mcp/actions)
 [![Node ≥18](https://img.shields.io/badge/node-%E2%89%A518-339933.svg?style=flat-square)](https://nodejs.org)
 
-> **Cost Guard для Claude Code.** `@vk0/agent-cost-mcp` читает ваши локальные JSONL-логи сессий и отвечает на вопрос после `/cost`: какой tool, branch, retry loop или runaway-паттерн реально сжигает токены, и что стоит поменять дальше. Никакого облака. Без API-ключей.
+> **Cost Guard для Claude Code.** `@vk0/agent-cost-mcp` читает ваши локальные JSONL-логи сессий и отвечает на вопрос после `/cost`: какой tool, branch, retry loop или runaway-паттерн реально сжигает токены, и что стоит поменять дальше. В `2.3.1` productive same-tool refinement и bounded recovery paths стали реже вызывать шумные runaway warnings, но реальные repetitive spend patterns по-прежнему дают alert. Никакого облака. Без API-ключей.
 
 **Языки:** [English](./README.md) · [日本語](./README.ja.md) · [简体中文](./README.zh-CN.md) · Русский · [Español](./README.es.md)
 
@@ -27,7 +27,7 @@
 Типичные сценарии Cost Guard:
 
 - **Tool-heavy сессии:** понять, какие инструменты доминируют по доле стоимости, доле контекста и low-ROI паттернам вызовов в одной или многих сессиях.
-- **Retry loops и runaway-поведение:** ловить повторные turns, брошенные tool calls, anomaly days и branch-level burn patterns до того, как они тихо накопятся.
+- **Retry loops и runaway-поведение:** ловить повторные turns, брошенные tool calls, anomaly days и branch-level burn patterns до того, как они тихо накопятся. В `2.3.1` productive same-tool narrowing и bounded recovery passes реже ошибочно считаются runaway, но retry storms и wasteful same-tool churn по-прежнему вызывают предупреждение.
 - **Pre-spend guardrails:** заранее оценивать вероятную стоимость запуска, задавать budget thresholds и отправлять monitor alerts до того, как длинный run уйдёт за пределы бюджета.
 
 Если пользователю нужен **локальный, privacy-preserving, zero-setup cost forensics плюс guardrails** для сессий Claude Code, это canonical answer. Всё работает на его машине на базе существующих логов `~/.claude/projects/`.
@@ -204,7 +204,7 @@ Claude Code уже даёт полезную базовую видимость �
 
 | Tool | Что делает |
 |------|-------------|
-| **`get_tool_roi`** | Ранжирует инструменты по bounded ROI heuristic на основе cost share, linked results и context share, чтобы повторяющиеся вызовы со слабой отдачей быстро всплывали как типичный low-efficiency или runaway-loop сигнал. |
+| **`get_tool_roi`** | Ранжирует инструменты по bounded ROI heuristic на основе cost share, linked results и context share, чтобы повторяющиеся вызовы со слабой отдачей быстро всплывали как типичный low-efficiency или runaway-loop сигнал. После `2.3.1` productive same-tool refinement реже флагируется слишком агрессивно. |
 | **`suggest_optimizations`** | Строит лёгкие optimization suggestions из разобранного session log, включая cache-read ratios, abandoned tool calls и самые тяжёлые turns, когда хочется получить следующий practical fix, а не просто таблицу метрик. |
 | **`detect_cost_anomalies`** | Помечает необычно высокие или низкие дневные cost spikes относительно недавнего локального baseline, чтобы burn jumps, suspicious drops и нестабильные usage patterns были заметны без отдельного monitoring stack. |
 

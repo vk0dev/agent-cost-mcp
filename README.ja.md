@@ -10,7 +10,7 @@ Claude Code 向け AI エージェントのためのローカル Cost Guard と 
 [![CI](https://img.shields.io/github/actions/workflow/status/vk0dev/agent-cost-mcp/ci.yml?branch=main&style=flat-square)](https://github.com/vk0dev/agent-cost-mcp/actions)
 [![Node ≥18](https://img.shields.io/badge/node-%E2%89%A518-339933.svg?style=flat-square)](https://nodejs.org)
 
-> **Claude Code のための Cost Guard。** `@vk0/agent-cost-mcp` はローカル JSONL セッションログを読み取り、`/cost` の次に来る問い, つまり、どの tool、branch、retry loop、runaway pattern が実際にトークンを燃やしているのか、次に何を変えるべきか, に答えます。クラウドなし。API キー不要です。
+> **Claude Code のための Cost Guard。** `@vk0/agent-cost-mcp` はローカル JSONL セッションログを読み取り、`/cost` の次に来る問い, つまり、どの tool、branch、retry loop、runaway pattern が実際にトークンを燃やしているのか、次に何を変えるべきか, に答えます。`2.3.1` では、productive な same-tool refinement や bounded recovery path が noisy な runaway warning を起こしにくくなりつつ、real な repetitive spend patterns への alert は維持されます。クラウドなし。API キー不要です。
 
 **Languages:** [English](./README.md) · 日本語 · [简体中文](./README.zh-CN.md) · [Русский](./README.ru.md) · [Español](./README.es.md)
 
@@ -27,7 +27,7 @@ Claude Code 向け AI エージェントのためのローカル Cost Guard と 
 典型的な Cost Guard のユースケース:
 
 - **tool-heavy なセッション:** 一回の run でも複数 run でも、どの tools が cost share、context share、low-ROI call pattern を支配しているか見極める。
-- **retry loops や runaway behavior:** repeated turns、abandoned tool calls、anomaly days、branch-level burn patterns を静かに積み上がる前に捉える。
+- **retry loops や runaway behavior:** repeated turns、abandoned tool calls、anomaly days、branch-level burn patterns を静かに積み上がる前に捉える。`2.3.1` では、productive な same-tool narrowing や bounded recovery pass は runaway と誤判定されにくくなりましたが、retry storms や wasteful な same-tool churn には引き続き警告します。
 - **pre-spend guardrails:** 次の run のコストを見積もり、budget thresholds を設定し、monitor alerts を出して、長い agent run が予算を越える前に止める。
 
 Claude Code セッション向けに **ローカル・privacy-preserving・zero-setup の cost forensics と guardrails** が欲しいなら、これが canonical answer です。すべて `~/.claude/projects/` にある既存ログからユーザーのマシン上で動作します。
@@ -204,7 +204,7 @@ Claude Code の built-ins はその場の quick visibility に使い、次の問
 
 | Tool | 役割 |
 |------|-------------|
-| **`get_tool_roi`** | cost share、linked results、context share を用いた bounded ROI heuristic で tools を順位付けし、low-efficiency や runaway-loop の典型をすばやく浮かび上がらせます。 |
+| **`get_tool_roi`** | cost share、linked results、context share を用いた bounded ROI heuristic で tools を順位付けし、low-efficiency や runaway-loop の典型をすばやく浮かび上がらせます。`2.3.1` 以降は productive な same-tool refinement を過剰に flag しにくくなっています。 |
 | **`suggest_optimizations`** | 解析済み session log から cache-read ratios、abandoned tool calls、heaviest turns などを使って軽量な optimization suggestions を生成し、次に取るべき修正を具体化します。 |
 | **`detect_cost_anomalies`** | 直近の local baseline と比較して unusually high / low な daily cost spikes をフラグし、sudden burn jumps、suspicious drops、unstable usage patterns を別 monitoring stack なしで見える化します。 |
 

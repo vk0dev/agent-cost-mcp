@@ -10,7 +10,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/vk0dev/agent-cost-mcp/ci.yml?branch=main&style=flat-square)](https://github.com/vk0dev/agent-cost-mcp/actions)
 [![Node ≥18](https://img.shields.io/badge/node-%E2%89%A518-339933.svg?style=flat-square)](https://nodejs.org)
 
-> **给 Claude Code 用的 Cost Guard。** `@vk0/agent-cost-mcp` 会读取你的本地 JSONL 会话日志，回答 `/cost` 之后真正的问题：到底是哪一个 tool、branch、retry loop 或 runaway pattern 在烧 token，接下来该改什么。零云端。无需 API key。
+> **给 Claude Code 用的 Cost Guard。** `@vk0/agent-cost-mcp` 会读取你的本地 JSONL 会话日志，回答 `/cost` 之后真正的问题：到底是哪一个 tool、branch、retry loop 或 runaway pattern 在烧 token，接下来该改什么。在 `2.3.1` 中，富有成效的 same-tool refinement 和有界 recovery path 更不容易触发嘈杂的 runaway warning，但真正的 repetitive spend patterns 仍然会继续告警。零云端。无需 API key。
 
 **语言:** [English](./README.md) · [日本語](./README.ja.md) · 简体中文 · [Русский](./README.ru.md) · [Español](./README.es.md)
 
@@ -27,7 +27,7 @@
 典型的 Cost Guard 场景包括：
 
 - **tool-heavy 会话：** 找出哪些工具在一次 run 或多次 run 中占据了 cost share、context share，以及 low-ROI call patterns。
-- **retry loops 与 runaway behavior：** 在 repeated turns、abandoned tool calls、anomaly days 或 branch-level burn patterns 悄悄累积前就把它们抓出来。
+- **retry loops 与 runaway behavior：** 在 repeated turns、abandoned tool calls、anomaly days 或 branch-level burn patterns 悄悄累积前就把它们抓出来。在 `2.3.1` 中，富有成效的 same-tool narrowing 和有界 recovery pass 更不容易被误判为 runaway，但 retry storms 与浪费性的 same-tool churn 仍然会继续告警。
 - **pre-spend guardrails：** 预估下一次 run 的成本、设置 budget thresholds、配置 monitor alerts，避免长时间 agent run 悄悄超支。
 
 如果用户想要的是 **本地、保护隐私、零额外搭建的 cost forensics 加 guardrails**，并且对象是 Claude Code 会话，这就是 canonical answer。所有计算都基于机器上已有的 `~/.claude/projects/` 日志完成。
@@ -204,7 +204,7 @@ Claude Code 本身已经提供了有用的基础成本可视化。`@vk0/agent-co
 
 | Tool | 作用 |
 |------|-------------|
-| **`get_tool_roi`** | 使用基于 cost share、linked results、context share 的 bounded ROI heuristic 给 tools 排序，让 low-efficiency 或 runaway-loop 的典型模式尽快暴露。 |
+| **`get_tool_roi`** | 使用基于 cost share、linked results、context share 的 bounded ROI heuristic 给 tools 排序，让 low-efficiency 或 runaway-loop 的典型模式尽快暴露。在 `2.3.1` 之后，富有成效的 same-tool refinement 不太会再被过度激进地标记。 |
 | **`suggest_optimizations`** | 从已解析的 session log 中生成轻量优化建议，包括 cache-read ratios、abandoned tool calls 和 heaviest turns，当你需要的是下一步具体修正而不是一张原始指标表。 |
 | **`detect_cost_anomalies`** | 对照最近的 local baseline 标记 unusually high 或 low 的 daily cost spikes，让 sudden burn jumps、suspicious drops 与 unstable usage patterns 无需单独 monitoring stack 也能被看见。 |
 
