@@ -425,6 +425,73 @@ function hasBoundedRecoveryAfterTransientFailure(
   return false;
 }
 
+function normalizeNoveltyText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9/_:.]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function extractTargetNoveltyValues(inputSignature: string): string[] {
+  const preferredKeys = new Set(['query', 'path', 'url', 'target', 'file', 'pattern', 'glob', 'command']);
+  const values: string[] = [];
+
+  const visit = (candidate: unknown, keyHint?: string) => {
+    if (candidate == null) return;
+    if (typeof candidate === 'string') {
+      if (!keyHint || preferredKeys.has(keyHint)) {
+        const normalized = normalizeNoveltyText(candidate);
+        if (normalized) values.push(`${keyHint ?? 'text'}:${normalized}`);
+      }
+      return;
+    }
+    if (typeof candidate === 'number' || typeof candidate === 'boolean') {
+      if (keyHint && preferredKeys.has(keyHint)) {
+        values.push(`${keyHint}:${String(candidate)}`);
+      }
+      return;
+    }
+    if (Array.isArray(candidate)) {
+      for (const item of candidate) visit(item, keyHint);
+      return;
+    }
+    if (typeof candidate === 'object') {
+      for (const [key, value] of Object.entries(candidate as Record<string, unknown>)) {
+        visit(value, key);
+      }
+    }
+  };
+
+  try {
+    const parsed = JSON.parse(inputSignature) as unknown;
+    visit(parsed);
+  } catch {
+    return [];
+  }
+
+  return [...new Set(values)];
+}
+
+function hasMeaningfulSameToolNovelty(
+  turns: Array<{ toolNameSignature: string; inputSignature: string }>,
+  minDistinctTargets = 2,
+): boolean {
+  const toolNames = new Set(turns.map((turn) => turn.toolNameSignature));
+  if (toolNames.size !== 1) {
+    return false;
+  }
+
+  const targetValues = new Set<string>();
+  for (const turn of turns) {
+    for (const value of extractTargetNoveltyValues(turn.inputSignature)) {
+      targetValues.add(value);
+    }
+  }
+
+  return targetValues.size >= minDistinctTargets;
+}
+
 function getSessionReferenceIds(sessionPath: string): string[] {
   const rows = readJsonlRows(sessionPath);
   const refs = new Set<string>();
@@ -1000,8 +1067,11 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
     const alternatingTwoSignatureCycle = recent.every((entry, index) => entry.signature === recent[index % 2]?.signature)
       && new Set(recent.map((entry) => entry.signature)).size === 2;
     const recoveredTransientFailure = hasBoundedRecoveryAfterTransientFailure(recent);
+    const sameToolOnly = new Set(recent.map((entry) => entry.toolNameSignature)).size === 1;
+    const meaningfulSameToolNovelty = hasMeaningfulSameToolNovelty(recent);
+    const likelySameToolDeadEnd = sameToolOnly && (allSameSignature || !meaningfulSameToolNovelty);
 
-    if (!recoveredTransientFailure && allNoSuccess && allSameSignature) {
+    if (!recoveredTransientFailure && allNoSuccess && likelySameToolDeadEnd) {
       runawayDetected = true;
       runawaySignature = recent[0]?.toolNameSignature;
       runawayReasonCode = repeatedHardErrors ? 'retry_storm_no_adaptation' : 'identical_signature_no_progress';

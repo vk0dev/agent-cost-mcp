@@ -813,6 +813,60 @@ describe('budget controls', () => {
     expect(payload.runaway_reason_code).toBe('retry_storm_no_adaptation');
   });
 
+  it('does not flag productive same-tool refinement when query novelty is real and results keep landing', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-novel-search-'));
+    writeSessionLog(path.join(projectPath, 'session-novel-search.jsonl'), [
+      assistantToolUseRecord('search-1', 'web_search', { query: 'claude code cost spikes' }),
+      userToolResultRecord('search-1', { text: 'broad forum results' }),
+      assistantToolUseRecord('search-2', 'web_search', { query: 'claude code cost spikes cache_read_tokens' }),
+      userToolResultRecord('search-2', { text: 'token accounting thread' }),
+      assistantToolUseRecord('search-3', 'web_search', { query: 'claude code cost spikes subagent sessions' }),
+      userToolResultRecord('search-3', { text: 'subagent-specific guidance' }),
+      assistantToolUseRecord('search-4', 'web_search', { query: 'claude code cost spikes budget guard' }),
+      userToolResultRecord('search-4', { text: 'budget workaround found' }),
+      assistantToolUseRecord('search-5', 'web_search', { query: 'claude code cost spikes anomaly threshold' }),
+      userToolResultRecord('search-5', { text: 'threshold tuning note' }),
+      assistantToolUseRecord('search-6', 'web_search', { query: 'claude code cost spikes webhook alerts' }),
+      userToolResultRecord('search-6', { text: 'alerting integration docs' }),
+    ]);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 6 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(false);
+    expect(payload.runaway_reason_code).toBeUndefined();
+  });
+
+  it('still flags superficial same-tool churn when the underlying dead end has not changed', async () => {
+    const server = makeFakeServer();
+    registerTools(server as never);
+
+    const projectPath = mkdtempSync(path.join(os.tmpdir(), 'agent-cost-shallow-novelty-'));
+    writeSessionLog(path.join(projectPath, 'session-shallow-novelty.jsonl'), [
+      assistantToolUseRecord('search-1', 'web_search', { query: 'claude code cost spike' }),
+      userToolResultRecord('search-1', { isError: true, text: 'no useful result' }),
+      assistantToolUseRecord('search-2', 'web_search', { query: 'claude   code cost spike' }),
+      userToolResultRecord('search-2', { isError: true, text: 'still no useful result' }),
+      assistantToolUseRecord('search-3', 'web_search', { query: 'Claude Code cost spike' }),
+      userToolResultRecord('search-3', { isError: true, text: 'same dead end' }),
+      assistantToolUseRecord('search-4', 'web_search', { query: 'claude code cost spike!!!' }),
+      userToolResultRecord('search-4', { isError: true, text: 'still nothing' }),
+      assistantToolUseRecord('search-5', 'web_search', { query: 'claude code cost spike?' }),
+      userToolResultRecord('search-5', { isError: true, text: 'dead end again' }),
+      assistantToolUseRecord('search-6', 'web_search', { query: 'claude-code cost spike' }),
+      userToolResultRecord('search-6', { isError: true, text: 'no progress' }),
+    ]);
+
+    const result = await server.handlers.get('detect_cost_anomalies')!({ projectPath, days: 7, minDailyCostUsd: 0, recentTurnWindow: 6 });
+    const payload = result.structuredContent as Record<string, unknown>;
+
+    expect(payload.runaway_detected).toBe(true);
+    expect(['identical_signature_no_progress', 'retry_storm_no_adaptation']).toContain(payload.runaway_reason_code);
+  });
+
   it('does not flag productive repeated tool use across fan-out style work', async () => {
     const server = makeFakeServer();
     registerTools(server as never);
