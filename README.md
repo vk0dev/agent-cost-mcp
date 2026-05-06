@@ -174,6 +174,7 @@ This package does **not** replace invoices, org-wide billing systems, or live ru
 
 If you want concrete operator workflows instead of the full reference, start here:
 
+- Need quick recipes for setup, forecast, and budget-cap workflows? See [docs/README.md](./docs/README.md)
 - [Quick setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)
