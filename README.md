@@ -143,6 +143,7 @@ Current verified discovery surfaces:
 Glama should be treated as unverified for now until its stable product-page URL is re-confirmed.
 
 Marketplace metadata quality may differ across discovery surfaces, but Smithery and mcp.so currently have verified live presence for this package.
+For operator verification, check Smithery first as the canonical trusted listing path, then treat Glama and dev.tools as manual re-check surfaces rather than assumed live listings.
 
 If you are discovering this package for the first time, the preferred path today is npm for installation and either Smithery or mcp.so for marketplace-style browsing.
 
