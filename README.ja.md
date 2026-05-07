@@ -212,7 +212,7 @@ Claude Code の built-ins はその場の quick visibility に使い、次の問
 
 | Tool | 役割 |
 |------|-------------|
-| **`get_cost_forecast`** | 直近の日次 trend data から bounded な local cost forecast を作り、過去に何が起きたかだけでなく次にどこへ向かうかを見られるようにします。履歴が短い場合も gracefully に劣化します。 |
+| **`get_cost_forecast`** | 直近の日次 trend data から bounded な local cost forecast を作り、過去に何が起きたかだけでなく次にどこへ向かうかを見られるようにします。`forecast_confidence` は quartile-based な local heuristic であり certainty ではなく、履歴が短い場合も gracefully に劣化します。 |
 
 ![forecast demo: get_cost_forecast showing recency-weighted-average-rc2 local spend projection](docs/demo-forecast.gif)
 

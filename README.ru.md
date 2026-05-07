@@ -212,7 +212,7 @@ Claude Code уже даёт полезную базовую видимость �
 
 | Tool | Что делает |
 |------|-------------|
-| **`get_cost_forecast`** | Строит bounded локальный cost forecast из недавнего day-level trend data, чтобы оператор мог спросить, куда движется spend дальше, а не только куда он уже ушёл. При короткой истории gracefully деградирует. |
+| **`get_cost_forecast`** | Строит bounded локальный cost forecast из недавнего day-level trend data, чтобы оператор мог спросить, куда движется spend дальше, а не только куда он уже ушёл; `forecast_confidence` здесь — quartile-based local heuristic, а не certainty. При короткой истории gracefully деградирует. |
 
 ![forecast demo: get_cost_forecast showing recency-weighted-average-rc2 local spend projection](docs/demo-forecast.gif)
 

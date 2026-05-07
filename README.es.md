@@ -212,7 +212,7 @@ Once herramientas MCP, todas operando sobre logs JSONL locales y todas enfocadas
 
 | Tool | Qué hace |
 |------|-------------|
-| **`get_cost_forecast`** | Proyecta una bounded local cost forecast a partir de recent daily trend data para responder hacia dónde va el spend, no solo dónde estuvo; degrada de forma graceful cuando todavía hay poca historia. |
+| **`get_cost_forecast`** | Proyecta una bounded local cost forecast a partir de recent daily trend data para responder hacia dónde va el spend, no solo dónde estuvo; `forecast_confidence` es una quartile-based local heuristic, no una certainty, y degrada de forma graceful cuando todavía hay poca historia. |
 
 ![forecast demo: get_cost_forecast showing recency-weighted-average-rc2 local spend projection](docs/demo-forecast.gif)
 

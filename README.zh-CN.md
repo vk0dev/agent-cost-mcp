@@ -212,7 +212,7 @@ Claude Code 本身已经提供了有用的基础成本可视化。`@vk0/agent-co
 
 | Tool | 作用 |
 |------|-------------|
-| **`get_cost_forecast`** | 根据最近的 daily trend data 生成 bounded 的 local cost forecast，让 operator 不只知道成本已经花到哪里，还能知道接下来大概会走向哪里。历史较短时也会 gracefully 降级。 |
+| **`get_cost_forecast`** | 根据最近的 daily trend data 生成 bounded 的 local cost forecast，让 operator 不只知道成本已经花到哪里，还能知道接下来大概会走向哪里；`forecast_confidence` 是 quartile-based 的 local heuristic，不代表 certainty，历史较短时也会 gracefully 降级。 |
 
 ![forecast demo: get_cost_forecast showing recency-weighted-average-rc2 local spend projection](docs/demo-forecast.gif)
 
