@@ -755,18 +755,32 @@ export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Cos
   const dailyMap = new Map<string, { sessions: number; costUsd: number; inputTokens: number; outputTokens: number }>();
 
   for (const file of files) {
-    const stats = statSync(file);
-    if (now - stats.mtimeMs > input.days * DAY_MS) {
+    const dailySlices = readDailyCostSlices(file, now, input.days);
+
+    if (dailySlices.length === 0) {
+      const stats = statSync(file);
+      if (now - stats.mtimeMs > input.days * DAY_MS) {
+        continue;
+      }
+      const date = new Date(stats.mtimeMs).toISOString().slice(0, 10);
+      const summary = summarizeSessionLogs(file);
+      const prev = dailyMap.get(date) ?? { sessions: 0, costUsd: 0, inputTokens: 0, outputTokens: 0 };
+      prev.sessions += 1;
+      prev.costUsd = Number((prev.costUsd + summary.totals.estimated_cost_usd).toFixed(6));
+      prev.inputTokens += summary.totals.input_tokens;
+      prev.outputTokens += summary.totals.output_tokens;
+      dailyMap.set(date, prev);
       continue;
     }
-    const date = new Date(stats.mtimeMs).toISOString().slice(0, 10);
-    const summary = summarizeSessionLogs(file);
-    const prev = dailyMap.get(date) ?? { sessions: 0, costUsd: 0, inputTokens: 0, outputTokens: 0 };
-    prev.sessions += 1;
-    prev.costUsd = Number((prev.costUsd + summary.totals.estimated_cost_usd).toFixed(6));
-    prev.inputTokens += summary.totals.input_tokens;
-    prev.outputTokens += summary.totals.output_tokens;
-    dailyMap.set(date, prev);
+
+    for (const slice of dailySlices) {
+      const prev = dailyMap.get(slice.date) ?? { sessions: 0, costUsd: 0, inputTokens: 0, outputTokens: 0 };
+      prev.sessions += slice.sessions;
+      prev.costUsd = Number((prev.costUsd + slice.costUsd).toFixed(6));
+      prev.inputTokens += slice.inputTokens;
+      prev.outputTokens += slice.outputTokens;
+      dailyMap.set(slice.date, prev);
+    }
   }
 
   const daily = [...dailyMap.entries()]
@@ -822,6 +836,51 @@ function percentile(sorted: number[], p: number): number {
 
 function roundUsd(value: number, digits = 2): number {
   return Number(value.toFixed(digits));
+}
+
+function readDailyCostSlices(file: string, now: number, days: number) {
+  const lines = readFileSync(file, 'utf8').split(/\r?\n/).filter(Boolean);
+  const perDay = new Map<string, { costUsd: number; inputTokens: number; outputTokens: number; sessions: Set<string> }>();
+
+  for (const line of lines) {
+    const record = JSON.parse(line) as Record<string, any>;
+    const type = String(record.type ?? record.message_type ?? record.role ?? '').toLowerCase();
+    if (!type.includes('assistant')) continue;
+
+    const timestamp = String(record.timestamp ?? record.created_at ?? record.createdAt ?? '');
+    const when = timestamp ? new Date(timestamp) : null;
+    if (!when || Number.isNaN(when.getTime())) continue;
+    if (now - when.getTime() > days * DAY_MS) continue;
+
+    const date = when.toISOString().slice(0, 10);
+    const usage = record.usage ?? record.message?.usage ?? {};
+    const costUsd = estimateCostUsd(
+      String(record.model ?? record.message?.model ?? 'unknown'),
+      {
+        input_tokens: Number(usage.input_tokens ?? 0),
+        output_tokens: Number(usage.output_tokens ?? 0),
+        cache_read_input_tokens: Number(usage.cache_read_input_tokens ?? 0),
+        cache_creation_input_tokens: Number(usage.cache_creation_input_tokens ?? 0),
+      },
+      DEFAULT_PRICING_TABLE,
+      () => {},
+    );
+
+    const prev = perDay.get(date) ?? { costUsd: 0, inputTokens: 0, outputTokens: 0, sessions: new Set<string>() };
+    prev.costUsd = Number((prev.costUsd + costUsd).toFixed(6));
+    prev.inputTokens += Number(usage.input_tokens ?? 0);
+    prev.outputTokens += Number(usage.output_tokens ?? 0);
+    prev.sessions.add(file);
+    perDay.set(date, prev);
+  }
+
+  return [...perDay.entries()].map(([date, value]) => ({
+    date,
+    sessions: value.sessions.size,
+    costUsd: value.costUsd,
+    inputTokens: value.inputTokens,
+    outputTokens: value.outputTokens,
+  }));
 }
 
 function buildForecastConfidence(daily: CostTrendResult['daily'], forecastDays: number, projectedTotalUsd: number) {
