@@ -1,6 +1,6 @@
 {
   "name": "@vk0/agent-cost-mcp",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "Local-first MCP server for Claude Code cost analysis, budgets, forecasts, anomalies, and subagent-aware optimization from local JSONL session logs.",
   "mcpName": "io.github.vk0dev/agent-cost-mcp",
   "type": "module",

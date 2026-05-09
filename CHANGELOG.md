@@ -1,3 +1,8 @@
+## [2.3.2] - 2026-05-09
+
+### Fixed
+- Aggregated daily trend and anomaly baselines by assistant row timestamp so recent days inside multi-day JSONL files no longer disappear when the containing file has an older mtime.
+
 ## [2.3.1] - 2026-05-06
 
 ### Fixed
