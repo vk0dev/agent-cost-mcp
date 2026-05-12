@@ -218,6 +218,8 @@ Eleven MCP tools, all operating on local JSONL session logs and all aimed at one
 
 ![forecast demo: get_cost_forecast showing recency-weighted-average-rc2 local spend projection](docs/demo-forecast.gif)
 
+Reproduce the shipped forecast demo with `node scripts/demo-forecast.mjs`.
+
 ![forecast fallback demo: sparse-history fallback lowers spike-driven overprojection and adds confidence metadata](docs/demo-forecast-fallback.gif)
 | **`estimate_run_cost`** | Estimate the likely cost of a planned run before execution from prompt, model, and expected tool-call shape, returning `{low, expected, high}` with confidence for pre-spend decisions. |
 
