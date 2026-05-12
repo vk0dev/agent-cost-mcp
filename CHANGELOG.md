@@ -1,3 +1,8 @@
+## [2.3.3] - 2026-05-12
+
+### Fixed
+- Preserved tiny positive daily spend through pricing and trend aggregation, and refreshed the anomaly forecast fixture timestamps so the zero-cost-day anomaly contract stays green under the current lookback window.
+
 ## [2.3.2] - 2026-05-09
 
 ### Fixed
