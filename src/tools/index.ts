@@ -766,7 +766,7 @@ export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Cos
       const summary = summarizeSessionLogs(file);
       const prev = dailyMap.get(date) ?? { sessions: 0, costUsd: 0, inputTokens: 0, outputTokens: 0 };
       prev.sessions += 1;
-      prev.costUsd = Number((prev.costUsd + summary.totals.estimated_cost_usd).toFixed(6));
+      prev.costUsd = Number((prev.costUsd + summary.totals.estimated_cost_usd).toFixed(8));
       prev.inputTokens += summary.totals.input_tokens;
       prev.outputTokens += summary.totals.output_tokens;
       dailyMap.set(date, prev);
@@ -776,7 +776,7 @@ export function getCostTrend(input: z.infer<typeof costTrendRequestSchema>): Cos
     for (const slice of dailySlices) {
       const prev = dailyMap.get(slice.date) ?? { sessions: 0, costUsd: 0, inputTokens: 0, outputTokens: 0 };
       prev.sessions += slice.sessions;
-      prev.costUsd = Number((prev.costUsd + slice.costUsd).toFixed(6));
+      prev.costUsd = Number((prev.costUsd + slice.costUsd).toFixed(8));
       prev.inputTokens += slice.inputTokens;
       prev.outputTokens += slice.outputTokens;
       dailyMap.set(slice.date, prev);
@@ -867,7 +867,7 @@ function readDailyCostSlices(file: string, now: number, days: number) {
     );
 
     const prev = perDay.get(date) ?? { costUsd: 0, inputTokens: 0, outputTokens: 0, sessions: new Set<string>() };
-    prev.costUsd = Number((prev.costUsd + costUsd).toFixed(6));
+    prev.costUsd += costUsd;
     prev.inputTokens += Number(usage.input_tokens ?? 0);
     prev.outputTokens += Number(usage.output_tokens ?? 0);
     prev.sessions.add(file);
@@ -877,7 +877,7 @@ function readDailyCostSlices(file: string, now: number, days: number) {
   return [...perDay.entries()].map(([date, value]) => ({
     date,
     sessions: value.sessions.size,
-    costUsd: value.costUsd,
+    costUsd: roundUsd(value.costUsd, 8),
     inputTokens: value.inputTokens,
     outputTokens: value.outputTokens,
   }));
@@ -1226,7 +1226,20 @@ export function detectCostAnomalies(input: z.infer<typeof anomalyRequestSchema>)
     return result;
   }
 
-  const baselineDailyCostUsd = Number((trend.totalCostUsd / trend.daily.length).toFixed(6));
+  const baselineDailyCostUsdRaw = trend.totalCostUsd / trend.daily.length;
+  const positiveCostDays = trend.daily.filter((day) => day.costUsd > 0);
+  const positiveCostBaselineUsd =
+    positiveCostDays.length > 0
+      ? positiveCostDays.reduce((sum, day) => sum + day.costUsd, 0) / positiveCostDays.length
+      : 0;
+  const roundedBaselineDailyCostUsd = Number(baselineDailyCostUsdRaw.toFixed(6));
+  const roundedPositiveCostBaselineUsd = Number(positiveCostBaselineUsd.toFixed(6));
+  const baselineDailyCostUsd =
+    roundedBaselineDailyCostUsd > 0 || positiveCostDays.length === 0
+      ? roundedBaselineDailyCostUsd
+      : roundedPositiveCostBaselineUsd > 0
+        ? roundedPositiveCostBaselineUsd
+        : positiveCostBaselineUsd;
   const anomalies = trend.daily
     .filter((day) => day.costUsd >= input.minDailyCostUsd)
     .map((day) => {

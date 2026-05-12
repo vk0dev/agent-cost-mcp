@@ -117,5 +117,5 @@ export function estimateCostUsd(
   const cacheReadCost = ((usage.cache_read_input_tokens ?? 0) / 1_000_000) * (pricing.cacheReadPerMillion ?? 0);
   const cacheWriteCost = ((usage.cache_creation_input_tokens ?? 0) / 1_000_000) * (pricing.cacheCreationPerMillion ?? 0);
 
-  return Number((inputCost + outputCost + cacheReadCost + cacheWriteCost).toFixed(6));
+  return Number((inputCost + outputCost + cacheReadCost + cacheWriteCost).toFixed(8));
 }

@@ -14,7 +14,11 @@ function makeProjectDir() {
 function writeSession(projectPath: string, name: string, rows: Array<{ timestamp?: string } & Record<string, unknown>>) {
   const filePath = path.join(projectPath, name);
   writeFileSync(filePath, rows.map((row) => JSON.stringify(row)).join('\n') + '\n');
-  const stamped = rows.find((row) => typeof row.timestamp === 'string')?.timestamp;
+  const stamped = rows
+    .map((row) => (typeof row.timestamp === 'string' ? row.timestamp : null))
+    .filter((timestamp): timestamp is string => timestamp !== null)
+    .sort()
+    .at(-1);
   if (stamped) {
     const when = new Date(stamped);
     utimesSync(filePath, when, when);
@@ -189,24 +193,26 @@ describe('forecast and anomaly edge cases', () => {
 
   it('keeps zero-cost days out of anomaly output even when every non-zero day is unusual', () => {
     const projectPath = makeProjectDir();
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
     writeSession(projectPath, 'mixed.jsonl', [
       {
         type: 'assistant',
-        timestamp: '2026-05-01T12:00:00.000Z',
+        timestamp: new Date(now - 2 * day).toISOString(),
         model: 'claude-sonnet-4',
         usage: { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
         message: { content: [] },
       },
       {
         type: 'assistant',
-        timestamp: '2026-05-02T12:00:00.000Z',
+        timestamp: new Date(now - day).toISOString(),
         model: 'claude-opus-4',
         usage: { input_tokens: 24000, output_tokens: 12000, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
         message: { content: [] },
       },
       {
         type: 'assistant',
-        timestamp: '2026-05-03T12:00:00.000Z',
+        timestamp: new Date(now).toISOString(),
         model: 'claude-haiku-3-5',
         usage: { input_tokens: 50, output_tokens: 10, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
         message: { content: [] },
