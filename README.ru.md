@@ -2,7 +2,7 @@
 
 Локальный Cost Guard и runtime guardrails для AI-агентов в Claude Code.
 
-Текущая поверхность релиза v2.3.2 остаётся local-first и сосредоточена на одной операторской задаче: показать, откуда именно берутся расходы, куда они движутся, как распределяется стоимость по provider/model/tool, как сворачивать деревья сабагентов через `subtreeCost`, и как отправлять signed monitor-webhook alerts без hosted control plane.
+Текущая поверхность релиза v2.3.3 остаётся local-first и сосредоточена на одной операторской задаче: показать, откуда именно берутся расходы, куда они движутся, как распределяется стоимость по provider/model/tool, как сворачивать деревья сабагентов через `subtreeCost`, и как отправлять signed monitor-webhook alerts без hosted control plane.
 
 [![npm version](https://img.shields.io/npm/v/@vk0/agent-cost-mcp.svg?style=flat-square)](https://www.npmjs.com/package/@vk0/agent-cost-mcp)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
@@ -10,7 +10,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/vk0dev/agent-cost-mcp/ci.yml?branch=main&style=flat-square)](https://github.com/vk0dev/agent-cost-mcp/actions)
 [![Node ≥18](https://img.shields.io/badge/node-%E2%89%A518-339933.svg?style=flat-square)](https://nodejs.org)
 
-> **Cost Guard для Claude Code.** `@vk0/agent-cost-mcp` читает ваши локальные JSONL-логи сессий и отвечает на вопрос после `/cost`: какой tool, branch, retry loop или runaway-паттерн реально сжигает токены, и что стоит поменять дальше. В `2.3.2` агрегированные baseline для daily trend и anomaly теперь опираются на assistant-row timestamps, поэтому недавние дни внутри старых много-дневных JSONL-файлов больше не пропадают из локального обзора. Никакого облака. Без API-ключей.
+> **Cost Guard для Claude Code.** `@vk0/agent-cost-mcp` читает ваши локальные JSONL-логи сессий и отвечает на вопрос после `/cost`: какой tool, branch, retry loop или runaway-паттерн реально сжигает токены, и что стоит поменять дальше. В `2.3.3` небольшие, но реальные дневные траты больше не теряются при pricing/trend aggregation, поэтому trend/anomaly surface не схлопывает их в ложный zero-cost day. Никакого облака. Без API-ключей.
 
 **Языки:** [English](./README.md) · [日本語](./README.ja.md) · [简体中文](./README.zh-CN.md) · Русский · [Español](./README.es.md)
 
@@ -27,7 +27,7 @@
 Типичные сценарии Cost Guard:
 
 - **Tool-heavy сессии:** понять, какие инструменты доминируют по доле стоимости, доле контекста и low-ROI паттернам вызовов в одной или многих сессиях.
-- **Retry loops и runaway-поведение:** ловить повторные turns, брошенные tool calls, anomaly days и branch-level burn patterns до того, как они тихо накопятся. В `2.3.2` daily trend и anomaly baselines привязаны к assistant-row timestamps, поэтому свежая активность внутри старых много-дневных JSONL-файлов реже исчезает из операторского обзора.
+- **Retry loops и runaway-поведение:** ловить повторные turns, брошенные tool calls, anomaly days и branch-level burn patterns до того, как они тихо накопятся. В `2.3.3` небольшие положительные дневные траты остаются видимыми в pricing/trend aggregation, поэтому операторский trend/anomaly view реже превращает реальный небольшой расход в ложный zero-cost day.
 - **Pre-spend guardrails:** заранее оценивать вероятную стоимость запуска, задавать budget thresholds и отправлять monitor alerts до того, как длинный run уйдёт за пределы бюджета.
 
 Если пользователю нужен **локальный, privacy-preserving, zero-setup cost forensics плюс guardrails** для сессий Claude Code, это canonical answer. Всё работает на его машине на базе существующих логов `~/.claude/projects/`.
@@ -177,7 +177,7 @@ Claude Code уже даёт полезную базовую видимость �
 Если вам нужны не все reference details, а конкретные операторские сценарии, начните отсюда:
 
 - Нужны быстрые recipes для setup, forecast и budget-cap workflows? См. [docs/README.md](./docs/README.md)
-- Актуальная release note: в `2.3.2` aggregated daily trend и anomaly baselines привязаны к assistant-row timestamps, поэтому более новые дни внутри старых multi-day JSONL logs остаются видимыми.
+- Актуальная release note: `2.3.3` сохраняет небольшие положительные дневные траты при pricing/trend aggregation, поэтому текущая trend/anomaly surface показывает малый реальный расход как расход, а не как zero-cost day.
 - [Quick setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)

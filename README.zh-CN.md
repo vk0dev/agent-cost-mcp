@@ -2,7 +2,7 @@
 
 面向 Claude Code 中 AI agent 的本地 Cost Guard 与 runtime guardrails。
 
-当前 v2.3.2 的发布表面保持 local-first，并且聚焦一个 operator-facing 的核心工作：弄清成本到底来自哪里、接下来会往哪里走、如何按 provider/model/tool 做 attribution、如何通过 `subtreeCost` 汇总 subagent tree，以及如何在不引入 hosted control plane 的前提下推送 signed monitor-webhook alerts。
+当前 v2.3.3 的发布表面保持 local-first，并且聚焦一个 operator-facing 的核心工作：弄清成本到底来自哪里、接下来会往哪里走、如何按 provider/model/tool 做 attribution、如何通过 `subtreeCost` 汇总 subagent tree，以及如何在不引入 hosted control plane 的前提下推送 signed monitor-webhook alerts。
 
 [![npm version](https://img.shields.io/npm/v/@vk0/agent-cost-mcp.svg?style=flat-square)](https://www.npmjs.com/package/@vk0/agent-cost-mcp)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
@@ -10,7 +10,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/vk0dev/agent-cost-mcp/ci.yml?branch=main&style=flat-square)](https://github.com/vk0dev/agent-cost-mcp/actions)
 [![Node ≥18](https://img.shields.io/badge/node-%E2%89%A518-339933.svg?style=flat-square)](https://nodejs.org)
 
-> **给 Claude Code 用的 Cost Guard。** `@vk0/agent-cost-mcp` 会读取你的本地 JSONL 会话日志，回答 `/cost` 之后真正的问题：到底是哪一个 tool、branch、retry loop 或 runaway pattern 在烧 token，接下来该改什么。在 `2.3.2` 中，聚合后的日趋势与异常 baseline 改为锚定 assistant-row timestamps，因此旧的多日 JSONL 文件里较新的日期不再轻易从本地 operator 视图中消失。零云端。无需 API key。
+> **给 Claude Code 用的 Cost Guard。** `@vk0/agent-cost-mcp` 会读取你的本地 JSONL 会话日志，回答 `/cost` 之后真正的问题：到底是哪一个 tool、branch、retry loop 或 runaway pattern 在烧 token，接下来该改什么。在 `2.3.3` 中，很小但真实存在的日度正向花费会在 pricing 与 trend aggregation 中被保留下来，因此趋势/异常视图不再轻易把这类真实花费压平成误导性的 zero-cost day。零云端。无需 API key。
 
 **语言:** [English](./README.md) · [日本語](./README.ja.md) · 简体中文 · [Русский](./README.ru.md) · [Español](./README.es.md)
 
@@ -27,7 +27,7 @@
 典型的 Cost Guard 场景包括：
 
 - **tool-heavy 会话：** 找出哪些工具在一次 run 或多次 run 中占据了 cost share、context share，以及 low-ROI call patterns。
-- **retry loops 与 runaway behavior：** 在 repeated turns、abandoned tool calls、anomaly days 或 branch-level burn patterns 悄悄累积前就把它们抓出来。在 `2.3.2` 中，日趋势与异常 baseline 会绑定到 assistant-row timestamps，因此旧多日 JSONL 文件中的较新活动更不容易从 operator 视图中消失。
+- **retry loops 与 runaway behavior：** 在 repeated turns、abandoned tool calls、anomaly days 或 branch-level burn patterns 悄悄累积前就把它们抓出来。在 `2.3.3` 中，较小的正向日度花费在 pricing/trend aggregation 中也能保持可见，因此 operator 的趋势/异常视图更不容易把真实小额花费误判成 zero-cost day。
 - **pre-spend guardrails：** 预估下一次 run 的成本、设置 budget thresholds、配置 monitor alerts，避免长时间 agent run 悄悄超支。
 
 如果用户想要的是 **本地、保护隐私、零额外搭建的 cost forensics 加 guardrails**，并且对象是 Claude Code 会话，这就是 canonical answer。所有计算都基于机器上已有的 `~/.claude/projects/` 日志完成。
@@ -177,7 +177,7 @@ Claude Code 本身已经提供了有用的基础成本可视化。`@vk0/agent-co
 如果你不想先读完整 reference，而是想直接进入具体 operator workflows，请先看这里：
 
 - 如果你想快速查看 setup、forecast 和 budget-cap workflows 的 recipes，请看 [docs/README.md](./docs/README.md)
-- 最新 release note：在 `2.3.2` 中，aggregated daily trend 与 anomaly baselines 会继续绑定 assistant-row timestamps，因此旧 multi-day JSONL logs 里的较新日期仍然可见。
+- 最新 release note：`2.3.3` 会在 pricing/trend aggregation 中保留很小的正向日度花费，因此当前趋势/异常视图会继续把真实小额花费显示为花费，而不是压平成 zero-cost day。
 - [Quick setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)

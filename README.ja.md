@@ -2,7 +2,7 @@
 
 Claude Code 向け AI エージェントのためのローカル Cost Guard と runtime guardrails です。
 
-現在の v2.3.2 リリース面は local-first を維持しつつ、ひとつの operator-facing な役割に集中しています。どこからコストが発生しているか、次にどこへ向かっているか、provider/model/tool ごとの attribution、`subtreeCost` による subagent tree の集約、そして hosted control plane なしで signed monitor-webhook alerts を送ることです。
+現在の v2.3.3 リリース面は local-first を維持しつつ、ひとつの operator-facing な役割に集中しています。どこからコストが発生しているか、次にどこへ向かっているか、provider/model/tool ごとの attribution、`subtreeCost` による subagent tree の集約、そして hosted control plane なしで signed monitor-webhook alerts を送ることです。
 
 [![npm version](https://img.shields.io/npm/v/@vk0/agent-cost-mcp.svg?style=flat-square)](https://www.npmjs.com/package/@vk0/agent-cost-mcp)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
@@ -10,7 +10,7 @@ Claude Code 向け AI エージェントのためのローカル Cost Guard と 
 [![CI](https://img.shields.io/github/actions/workflow/status/vk0dev/agent-cost-mcp/ci.yml?branch=main&style=flat-square)](https://github.com/vk0dev/agent-cost-mcp/actions)
 [![Node ≥18](https://img.shields.io/badge/node-%E2%89%A518-339933.svg?style=flat-square)](https://nodejs.org)
 
-> **Claude Code のための Cost Guard。** `@vk0/agent-cost-mcp` はローカル JSONL セッションログを読み取り、`/cost` の次に来る問い, つまり、どの tool、branch、retry loop、runaway pattern が実際にトークンを燃やしているのか、次に何を変えるべきか, に答えます。`2.3.2` では、日次トレンドと anomaly の集計 baseline が assistant-row timestamps に基づくようになり、古い複数日 JSONL ファイルの中にある最近の日付がローカル operator view から消えにくくなりました。クラウドなし。API キー不要です。
+> **Claude Code のための Cost Guard。** `@vk0/agent-cost-mcp` はローカル JSONL セッションログを読み取り、`/cost` の次に来る問い, つまり、どの tool、branch、retry loop、runaway pattern が実際にトークンを燃やしているのか、次に何を変えるべきか, に答えます。`2.3.3` では、ごく小さい正の daily spend も pricing と trend aggregation を通して保持されるため、trend/anomaly surface が実際の小さな支出を誤って zero-cost day として潰しにくくなりました。クラウドなし。API キー不要です。
 
 **Languages:** [English](./README.md) · 日本語 · [简体中文](./README.zh-CN.md) · [Русский](./README.ru.md) · [Español](./README.es.md)
 
@@ -27,7 +27,7 @@ Claude Code 向け AI エージェントのためのローカル Cost Guard と 
 典型的な Cost Guard のユースケース:
 
 - **tool-heavy なセッション:** 一回の run でも複数 run でも、どの tools が cost share、context share、low-ROI call pattern を支配しているか見極める。
-- **retry loops や runaway behavior:** repeated turns、abandoned tool calls、anomaly days、branch-level burn patterns を静かに積み上がる前に捉える。`2.3.2` では、日次トレンドと anomaly baseline が assistant-row timestamps に結び付くため、古い複数日 JSONL ファイル内の最近のアクティビティが operator view から抜け落ちにくくなりました。
+- **retry loops や runaway behavior:** repeated turns、abandoned tool calls、anomaly days、branch-level burn patterns を静かに積み上がる前に捉える。`2.3.3` では、ごく小さい正の daily spend も pricing/trend aggregation で見え続けるため、operator の trend/anomaly view が実際の少額支出を誤って zero-cost day に潰しにくくなりました。
 - **pre-spend guardrails:** 次の run のコストを見積もり、budget thresholds を設定し、monitor alerts を出して、長い agent run が予算を越える前に止める。
 
 Claude Code セッション向けに **ローカル・privacy-preserving・zero-setup の cost forensics と guardrails** が欲しいなら、これが canonical answer です。すべて `~/.claude/projects/` にある既存ログからユーザーのマシン上で動作します。
@@ -177,7 +177,7 @@ Claude Code の built-ins はその場の quick visibility に使い、次の問
 フル reference ではなく具体的な operator workflow から始めたいなら、まずはこちらです。
 
 - setup、forecast、budget-cap workflows の quick recipes が欲しいなら [docs/README.md](./docs/README.md) を見てください
-- 最新の release note: `2.3.2` では aggregated daily trend と anomaly baselines が assistant-row timestamps に結び付いたままなので、古い multi-day JSONL logs の中にある新しい日付も見え続けます。
+- 最新の release note: `2.3.3` では tiny positive daily spend が pricing/trend aggregation でも保持されるので、現在の trend/anomaly surface では小さい実支出も zero-cost day に潰されず見えます。
 - [Quick setup with Claude Desktop](./docs/claude-desktop-quickstart.md)
 - [How to read a `get_subagent_tree` output](./docs/subagent-tree-guide.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./docs/budget-cap-recipe.md)

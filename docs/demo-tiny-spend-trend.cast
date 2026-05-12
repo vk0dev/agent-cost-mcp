@@ -1,0 +1,10 @@
+{"version":3,"term":{"cols":80,"rows":24},"timestamp":1778624210,"command":"node scripts/demo-tiny-spend-trend.mjs"}
+[0.297, "o", "\u001b[2m# Tiny positive spend should stay visible in daily trend output.\u001b[0m\r\n"]
+[1.059, "o", "\u001b[1m$ get_cost_trend days=7\u001b[0m\r\n"]
+[0.701, "o", "\u001b[2m  project: /var/folders/_9/mdg6clp17s123gpw80gkqyfm0000gn/T/agent-cost-tiny-spend-7RCSLT\u001b[0m\r\n"]
+[0.901, "o", "\r\n"]
+[0.438, "o", "\u001b[36m\u001b[1m>>> totalCostUsd\u001b[0m 0.000240\r\n"]
+[0.902, "o", "\u001b[36m\u001b[1m>>> daily\u001b[0m [\r\n  {\r\n    \"date\": \"2026-05-10\",\r\n    \"sessions\": 1,\r\n    \"costUsd\": 0.000096,\r\n    \"inputTokens\": 12,\r\n    \"outputTokens\": 4\r\n  },\r\n  {\r\n    \"date\": \"2026-05-11\",\r\n    \"sessions\": 1,\r\n    \"costUsd\": 0.000144,\r\n    \"inputTokens\": 18,\r\n    \"outputTokens\": 6\r\n  }\r\n]\r\n"]
+[1.502, "o", "\r\n"]
+[0.420, "o", "\u001b[32m\u001b[1m2.3.3 matters here:\u001b[0m tiny real spend no longer disappears when trend data is aggregated.\r\n"]
+[1.709, "x", "0"]
