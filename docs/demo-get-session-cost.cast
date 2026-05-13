@@ -1,0 +1,13 @@
+{"version":3,"term":{"cols":80,"rows":24},"timestamp":1778581623,"command":"node scripts/demo-get-session-cost.mjs"}
+[0.171, "o", "\u001b[2m# One local session log, parsed into concrete token totals and spend.\u001b[0m\r\n"]
+[1.102, "o", "\u001b[1m$ get_session_cost session-main.jsonl\u001b[0m\r\n"]
+[0.702, "o", "\u001b[2m  project: /var/folders/_9/mdg6clp17s123gpw80gkqyfm0000gn/T/agent-cost-session-cost-lJHyqk\u001b[0m\r\n"]
+[0.902, "o", "\r\n"]
+[0.427, "o", "\u001b[36m\u001b[1m>>> turnCount\u001b[0m 2\r\n"]
+[0.702, "o", "\u001b[36m\u001b[1m>>> estimated_cost_usd\u001b[0m \u001b[32m0.0488\u001b[0m\r\n"]
+[0.903, "o", "\u001b[36m\u001b[1m>>> input_tokens\u001b[0m 7600\r\n"]
+[0.701, "o", "\u001b[36m\u001b[1m>>> output_tokens\u001b[0m 1520\r\n"]
+[0.701, "o", "\u001b[36m\u001b[1m>>> cache_read_input_tokens\u001b[0m 4200\r\n"]
+[0.900, "o", "\r\n"]
+[0.422, "o", "\u001b[32m\u001b[1mWhat this proves:\u001b[0m one local JSONL session becomes a concrete cost snapshot without cloud telemetry.\r\n"]
+[1.709, "x", "0"]

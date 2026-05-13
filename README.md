@@ -186,6 +186,7 @@ Already-shipped demo assets you can inspect quickly:
 
 - [Forecast / cap-hit demo GIF](./docs/demo-forecast.gif) for the current `get_cost_forecast` operator story
 - [Subagent-tree cost demo GIF](./docs/demo-subagent-tree.gif) for the current `get_subagent_tree` branch-cost story
+- [`get_session_cost` demo trio](./docs/demo-get-session-cost.gif): GIF + cast + source script at [`docs/demo-get-session-cost.cast`](./docs/demo-get-session-cost.cast) and [`scripts/demo-get-session-cost.mjs`](./scripts/demo-get-session-cost.mjs)
 
 ## Tools
 

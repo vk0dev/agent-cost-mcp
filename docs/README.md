@@ -8,6 +8,14 @@ Use this page when you want the shortest path to the most common `@vk0/agent-cos
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./budget-cap-recipe.md)
 - Latest shipped release note: `2.3.3` preserves tiny positive daily spend through pricing and trend aggregation, so the current trend/anomaly surface keeps small real spend visible instead of flattening it into a zero-cost day.
 
+## Session-cost demo
+
+If you want the shortest operator walk-through for `get_session_cost`, inspect this shipped trio:
+
+- [`demo-get-session-cost.gif`](./demo-get-session-cost.gif) for the quick visual outcome
+- [`demo-get-session-cost.cast`](./demo-get-session-cost.cast) for the terminal replay
+- [`../scripts/demo-get-session-cost.mjs`](../scripts/demo-get-session-cost.mjs) for the exact scripted source
+
 ## Forecast workflow
 
 If you are using `get_cost_forecast`, read the output in this order:
