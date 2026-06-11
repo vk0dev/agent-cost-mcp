@@ -16,6 +16,14 @@ If you want the shortest operator walk-through for `get_session_cost`, inspect t
 - [`demo-get-session-cost.cast`](./demo-get-session-cost.cast) for the terminal replay
 - [`../scripts/demo-get-session-cost.mjs`](../scripts/demo-get-session-cost.mjs) for the exact scripted source
 
+## Tool analytics demo
+
+If you want a compact operator walk-through for the aggregate analytics surface, inspect this shipped trio:
+
+- [`demo-tool-analytics.gif`](./demo-tool-analytics.gif) for the visual run
+- [`demo-tool-analytics.cast`](./demo-tool-analytics.cast) for the terminal replay
+- [`../scripts/demo-tool-analytics.mjs`](../scripts/demo-tool-analytics.mjs) for the fixture-backed source that calls `get_tool_usage`, `get_cost_trend`, `get_tool_roi`, `detect_cost_anomalies`, and `estimate_run_cost`
+
 ## Forecast workflow
 
 If you are using `get_cost_forecast`, read the output in this order:

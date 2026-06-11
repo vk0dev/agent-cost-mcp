@@ -186,7 +186,9 @@ Already-shipped demo assets you can inspect quickly:
 
 - [Forecast / cap-hit demo GIF](./docs/demo-forecast.gif) for the current `get_cost_forecast` operator story
 - [Subagent-tree cost demo GIF](./docs/demo-subagent-tree.gif) for the current `get_subagent_tree` branch-cost story
+- [Tool analytics demo GIF](./docs/demo-tool-analytics.gif) for the `get_tool_usage` -> `get_cost_trend` -> `get_tool_roi` -> `detect_cost_anomalies` -> `estimate_run_cost` operator story
 - [`get_session_cost` demo trio](./docs/demo-get-session-cost.gif): GIF + cast + source script at [`docs/demo-get-session-cost.cast`](./docs/demo-get-session-cost.cast) and [`scripts/demo-get-session-cost.mjs`](./scripts/demo-get-session-cost.mjs)
+- [`demo-tool-analytics` demo trio](./docs/demo-tool-analytics.gif): GIF + cast + source script at [`docs/demo-tool-analytics.cast`](./docs/demo-tool-analytics.cast) and [`scripts/demo-tool-analytics.mjs`](./scripts/demo-tool-analytics.mjs)
 
 ## Tools
 
@@ -210,6 +212,10 @@ Eleven MCP tools, all operating on local JSONL session logs and all aimed at one
 | **`get_tool_roi`** | Rank tools by a bounded ROI heuristic using cost share, linked results, and context share, so repeated calls with weak payoff surface quickly as the classic low-efficiency or runaway-loop signature, while productive same-tool refinement is less likely to be flagged too aggressively after `2.3.1`. |
 | **`suggest_optimizations`** | Generate lightweight optimization suggestions from a parsed session log, including cache-read ratios, abandoned tool calls, and heaviest turns, when you want the next fix to be more concrete than a raw metric table. |
 | **`detect_cost_anomalies`** | Flag unusually high or low daily cost spikes against the recent local baseline so sudden burn jumps, suspicious drops, and unstable usage patterns stand out without a separate monitoring stack. |
+
+![tool analytics demo: get_tool_usage, get_cost_trend, get_tool_roi, detect_cost_anomalies, and estimate_run_cost on local JSONL logs](docs/demo-tool-analytics.gif)
+
+Reproduce the shipped tool analytics demo with `node scripts/demo-tool-analytics.mjs`.
 
 **Predictive (pre-spend):**
 
