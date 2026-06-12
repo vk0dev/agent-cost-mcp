@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { existsSync, rmSync } from 'node:fs';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { existsSync, readdirSync, rmSync, utimesSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   emitMonitorEvent,
@@ -13,6 +14,19 @@ import { getTelemetryClient, resetTelemetryClient, setTelemetryClient } from '..
 import { getCostTrend } from '../src/tools/index.js';
 
 describe('monitor webhook state', () => {
+  beforeAll(() => {
+    // Fixture files have the mtime from git checkout time. getCostTrend filters out files
+    // older than `days` (default 30). Reset mtimes to "now" so the filter always passes,
+    // making the test deterministic regardless of when the checkout occurred.
+    const fixturesPath = new URL('../fixtures', import.meta.url).pathname;
+    const now = new Date();
+    for (const name of readdirSync(fixturesPath)) {
+      if (name.endsWith('.jsonl')) {
+        utimesSync(join(fixturesPath, name), now, now);
+      }
+    }
+  });
+
   afterEach(() => {
     const statePath = getMonitorWebhookStatePath();
     if (existsSync(statePath)) rmSync(statePath, { force: true });
