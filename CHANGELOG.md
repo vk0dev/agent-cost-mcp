@@ -1,3 +1,12 @@
+## [Unreleased]
+
+### Security
+- Upgraded Vitest from 3.2.4 to 4.1.8 to fix critical GHSA-5xrq-8626-4rwp (arbitrary file read/exec via UI server).
+- Added npm `overrides` for transitive dependencies: fast-uri ≥3.1.2 (GHSA-q3j6-qgpj-74h6, GHSA-v39h-62p7-jpjc), hono ≥4.12.21, ip-address ≥10.2.0, qs ≥6.15.2. Total audit findings: 9 → 0.
+
+### Fixed
+- Updated forecast tests to use relative timestamps (days ago from now) instead of hardcoded May 2026 dates, preventing test failures as lookback windows age out.
+
 ## [2.3.3] - 2026-05-12
 
 ### Fixed
