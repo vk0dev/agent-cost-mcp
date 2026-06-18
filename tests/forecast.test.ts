@@ -25,6 +25,13 @@ function writeSession(projectPath: string, name: string, rows: Array<{ timestamp
   }
 }
 
+function isoDaysAgo(daysAgo: number, hour = 12) {
+  const when = new Date();
+  when.setUTCHours(hour, 0, 0, 0);
+  when.setUTCDate(when.getUTCDate() - daysAgo);
+  return when.toISOString();
+}
+
 function dailyAssistantRow(timestamp: string, inputTokens: number, outputTokens: number, model = 'claude-sonnet-4') {
   return {
     type: 'assistant',
@@ -50,7 +57,7 @@ describe('forecast and anomaly edge cases', () => {
     writeSession(projectPath, 'single.jsonl', [
       {
         type: 'assistant',
-        timestamp: '2026-05-01T12:00:00.000Z',
+        timestamp: isoDaysAgo(1),
         model: 'claude-sonnet-4',
         usage: {
           input_tokens: 1200,
@@ -74,7 +81,7 @@ describe('forecast and anomaly edge cases', () => {
     writeSession(projectPath, 'single-forecast.jsonl', [
       {
         type: 'assistant',
-        timestamp: '2026-05-01T12:00:00.000Z',
+        timestamp: isoDaysAgo(1),
         model: 'claude-sonnet-4',
         usage: { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
         message: { content: [] },
@@ -105,7 +112,7 @@ describe('forecast and anomaly edge cases', () => {
       writeSession(projectPath, `bursty-day-${idx + 1}.jsonl`, [
         {
           type: 'assistant',
-          timestamp: `2026-05-${String(idx + 1).padStart(2, '0')}T12:00:00.000Z`,
+          timestamp: isoDaysAgo(burstRows.length - idx),
           model: 'claude-sonnet-4',
           usage: { ...usage, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
           message: { content: [] },
@@ -126,7 +133,7 @@ describe('forecast and anomaly edge cases', () => {
     const projectPath = makeProjectDir();
     Array.from({ length: 8 }, (_, idx) => idx + 1).forEach((day) => {
       writeSession(projectPath, `stable-day-${day}.jsonl`, [
-        dailyAssistantRow(`2026-05-${String(day).padStart(2, '0')}T12:00:00.000Z`, 2400, 600),
+        dailyAssistantRow(isoDaysAgo(8 - day), 2400, 600),
       ]);
     });
 
@@ -147,8 +154,8 @@ describe('forecast and anomaly edge cases', () => {
 
   it('triggers sparse fallback for a one-spike two-day history and gets closer to the next-day truth', () => {
     const projectPath = makeProjectDir();
-    writeSession(projectPath, 'day-1.jsonl', [dailyAssistantRow('2026-05-01T12:00:00.000Z', 1000, 200)]);
-    writeSession(projectPath, 'day-2.jsonl', [dailyAssistantRow('2026-05-02T12:00:00.000Z', 10000, 2000)]);
+    writeSession(projectPath, 'day-1.jsonl', [dailyAssistantRow(isoDaysAgo(2), 1000, 200)]);
+    writeSession(projectPath, 'day-2.jsonl', [dailyAssistantRow(isoDaysAgo(1), 10000, 2000)]);
 
     const result = getCostForecast({ projectPath, lookbackDays: 30, forecastDays: 1 });
     const nextDayTruth = estimateCostUsd('claude-sonnet-4', {
@@ -170,8 +177,8 @@ describe('forecast and anomaly edge cases', () => {
 
   it('triggers sparse fallback for a burst-dominated short history and reduces overshoot', () => {
     const projectPath = makeProjectDir();
-    writeSession(projectPath, 'day-a.jsonl', [dailyAssistantRow('2026-05-01T12:00:00.000Z', 2200, 400)]);
-    writeSession(projectPath, 'day-b.jsonl', [dailyAssistantRow('2026-05-02T12:00:00.000Z', 18000, 3600)]);
+    writeSession(projectPath, 'day-a.jsonl', [dailyAssistantRow(isoDaysAgo(2), 2200, 400)]);
+    writeSession(projectPath, 'day-b.jsonl', [dailyAssistantRow(isoDaysAgo(1), 18000, 3600)]);
 
     const result = getCostForecast({ projectPath, lookbackDays: 30, forecastDays: 1 });
     const nextDayTruth = estimateCostUsd('claude-sonnet-4', {
