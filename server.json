@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.vk0dev/agent-cost-mcp",
-  "description": "Local-first Claude Code Cost Guard for budgets, forecasts, anomalies, per-tool spend, and subagent-aware optimization.",
+  "description": "Local-first Cost Guard for Claude Code — per-tool ROI, subagent-tree attribution, anomaly/forecast/budget guardrails from local JSONL logs. Complements native /cost and ccusage.",
   "repository": {
     "url": "https://github.com/vk0dev/agent-cost-mcp",
     "source": "github"

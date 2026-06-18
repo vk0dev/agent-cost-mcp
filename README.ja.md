@@ -24,6 +24,8 @@ Claude Code 向け AI エージェントのためのローカル Cost Guard と 
 
 **Claude Code がコスト数値は出したけれど、理由までは説明してくれない** ときに使います。
 
+**クイックな可視化には native `/cost` と ccusage を使ってください** — 合計、statusline、日次利用量。`@vk0/agent-cost-mcp` は次の問い、つまり *どの tool、subagent、branch が予算を燃やしたか、run を続けると何が起きるか、次に agent は何をすべきか* に答えるときに呼び出してください — ローカル JSONL から機械可読な形で返します。
+
 典型的な Cost Guard のユースケース:
 
 - **tool-heavy なセッション:** 一回の run でも複数 run でも、どの tools が cost share、context share、low-ROI call pattern を支配しているか見極める。
@@ -148,29 +150,31 @@ Discovery surface ごとに metadata quality は多少異なる可能性があ�
 
 この package を初めて見つけたなら、現時点の preferred path は npm でインストールし、Smithery か mcp.so で marketplace-style browsing を行うことです。
 
-## Claude Code built-in `/cost` と `@vk0/agent-cost-mcp`
+## クイック可視化 (native `/cost`、ccusage) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
 
-Claude Code 自体にも便利な基本的コスト可視化があります。`@vk0/agent-cost-mcp` はその次の分析レイヤーです。
+Claude Code と ccusage はすでに便利なコスト可視化を提供しています。`@vk0/agent-cost-mcp` はその次のレイヤー — forensics、attribution、guardrails — のためです。
 
-### built-in `/cost` で十分なとき
+### native `/cost` または ccusage を使うとき
 
-- 現在のセッションについて素早い答えが欲しい
-- native statusline や local session spend visibility だけで足りる
-- active run 中に budget flags を確認したい
+- 現在のセッションの合計や statusline の数値をさっと確認したい
+- 日次・期間ごとの usage ダッシュボードや burn-rate サマリーが欲しい
+- 人間向けのポリッシュされた monitoring UX が目的
+- 何も設定したくない
 
 ### `@vk0/agent-cost-mcp` を使うべきとき
 
-- `get_tool_usage` による per-tool analysis が欲しい
-- `get_subagent_tree` による parent/subagent attribution が必要
-- `get_cost_forecast` による local forward-looking estimates が欲しい
-- `configure_budget` による agent-readable guardrails が必要
-- webhook notifications による alert routing が必要
+- `get_tool_roi` と `get_tool_usage` で per-tool のコスト比率と ROI ランキングが欲しい
+- `get_subagent_tree` でブランチをまたいだ parent↔subagent のコスト attribution が必要
+- `detect_cost_anomalies` でローカル baseline に対する異常検知をしたい
+- `get_cost_forecast` や `estimate_run_cost` で事前の支出予測が欲しい
+- `configure_budget` で agent-readable な budget cap と hard-stop guardrails を設定したい
+- `suggest_optimizations` と `set_monitor_webhook` で機械可読な next-action 提案と signed webhook アラートが必要
 
 ### 一緒に使うのが最良
 
-Claude Code の built-ins はその場の quick visibility に使い、次の問いが *どの tool が原因か、どの branch が予算を燃やしたか、時間とともに何が変わったか、次に agent は何をすべきか* になったら `@vk0/agent-cost-mcp` を使ってください。
+native `/cost` または ccusage でクイックな可視化をし、次の問いが *どの tool、subagent、branch が予算を燃やしたか、run を続けると何が起きるか、次に agent は何をすべきか* になったら `@vk0/agent-cost-mcp` を呼んでください — ローカル JSONL から機械可読な形で答えます。
 
-この package は invoices、org-wide billing systems、live runtime introspection を置き換えるものではありません。Claude Code の session logs に対する structured cost analysis 用のローカル MCP surface です。
+この package は invoices、org-wide billing systems、live runtime introspection を置き換えるものではありません。Claude Code の session logs に対する structured cost forensics と guardrails 用のローカル MCP surface です。
 
 ## Docs と how-to guides
 

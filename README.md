@@ -22,6 +22,8 @@ Current v2.3.2 release surface stays local-first and centered on one operator-fa
 
 Use this when **Claude Code already gave you a cost number, but not the reason behind it**.
 
+**Use native `/cost` and ccusage for quick visibility** — totals, statusline, daily usage. Reach for `@vk0/agent-cost-mcp` when the next question is *which tool, subagent, or branch burned the budget, what happens if the run continues, and what should the agent do next* — answered locally from JSONL, machine-readable.
+
 Typical Cost Guard cases:
 
 - **Tool-heavy sessions:** identify which tools dominate cost share, context share, and low-ROI call patterns across one run or many runs.
@@ -147,29 +149,31 @@ For operator verification, check Smithery first as the canonical trusted listing
 
 If you are discovering this package for the first time, the preferred path today is npm for installation and either Smithery or mcp.so for marketplace-style browsing.
 
-## Claude Code built-in `/cost` vs `@vk0/agent-cost-mcp`
+## Quick visibility (native `/cost`, ccusage) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
 
-Claude Code already gives you useful native cost visibility. `@vk0/agent-cost-mcp` is for the next layer of analysis.
+Claude Code and ccusage already give you useful cost visibility. `@vk0/agent-cost-mcp` is for the next layer: forensics, attribution, and guardrails.
 
-### Use built-in Claude Code `/cost` when
+### Use native `/cost` or ccusage when
 
-- you want a quick answer for the current session
-- you only need native statusline or local session spend visibility
-- you are checking budget flags during an active run
+- you want a quick current-session total or statusline number
+- you need daily or period usage dashboards or burn-rate summaries
+- you are looking for a polished human-facing monitoring UX
+- nothing to configure
 
 ### Use `@vk0/agent-cost-mcp` when
 
-- you want per-tool analysis with `get_tool_usage`
-- you need parent/subagent attribution with `get_subagent_tree`
-- you want local forward-looking estimates from `get_cost_forecast`
-- you need agent-readable guardrails with `configure_budget`
-- you want alert routing via webhook notifications
+- you want per-tool cost share and ROI ranking with `get_tool_roi` and `get_tool_usage`
+- you need parent↔subagent cost attribution across branches with `get_subagent_tree`
+- you want anomaly detection against your local baseline with `detect_cost_anomalies`
+- you need forward-looking spend estimates from `get_cost_forecast` or `estimate_run_cost`
+- you want agent-readable budget caps and hard-stop guardrails via `configure_budget`
+- you need machine-readable next-action suggestions and signed webhook alerts via `suggest_optimizations` and `set_monitor_webhook`
 
 ### Best together
 
-Use Claude Code built-ins for quick in-session visibility, then use `@vk0/agent-cost-mcp` when the next question is: *which tool caused this, which branch burned the budget, what changed over time, and what should the agent do next?*
+Use native `/cost` or ccusage for quick visibility; reach for `@vk0/agent-cost-mcp` when the next question is: *which tool, subagent, or branch burned the budget, what happens if the run continues, and what should the agent do next?* — answered locally from JSONL, machine-readable.
 
-This package does **not** replace invoices, org-wide billing systems, or live runtime introspection. It is a local MCP surface for structured cost analysis from Claude Code session logs.
+This package does **not** replace invoices, org-wide billing systems, or live runtime introspection. It is a local MCP surface for structured cost forensics and guardrails from Claude Code session logs.
 
 ## Docs and how-to guides
 
