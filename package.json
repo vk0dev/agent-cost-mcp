@@ -1,7 +1,7 @@
 {
   "name": "@vk0/agent-cost-mcp",
   "version": "2.3.3",
-  "description": "Local-first MCP server for Claude Code cost analysis, budgets, forecasts, anomalies, and subagent-aware optimization from local JSONL session logs.",
+  "description": "Local-first Cost Guard for Claude Code — per-tool ROI, subagent-tree cost attribution, anomaly/forecast/budget guardrails, and machine-readable next actions from local JSONL session logs. Complements native /cost and ccusage; not invoices or org billing.",
   "mcpName": "io.github.vk0dev/agent-cost-mcp",
   "type": "module",
   "main": "dist/index.js",
@@ -41,7 +41,10 @@
     "cost-forecast",
     "anomaly-detection",
     "subagent",
-    "developer-tools"
+    "developer-tools",
+    "cost-guard",
+    "ccusage",
+    "roi"
   ],
   "author": "vk0.dev",
   "license": "MIT",

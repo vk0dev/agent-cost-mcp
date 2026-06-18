@@ -24,6 +24,8 @@
 
 Используйте пакет, когда **Claude Code уже показал стоимость, но не объяснил её причину**.
 
+**Для быстрой видимости используйте native `/cost` и ccusage** — итоги, statusline, дневное использование. К `@vk0/agent-cost-mcp` обращайтесь, когда следующий вопрос — *какой tool, сабагент или ветка сожгли бюджет, что будет, если run продолжится, и что агенту делать дальше* — нужен ответ из локального JSONL в машиночитаемом виде.
+
 Типичные сценарии Cost Guard:
 
 - **Tool-heavy сессии:** понять, какие инструменты доминируют по доле стоимости, доле контекста и low-ROI паттернам вызовов в одной или многих сессиях.
@@ -148,29 +150,31 @@ Glama пока стоит считать непроверенным, пока н
 
 Если вы только что нашли этот пакет, сегодня preferred path такой: npm для установки и Smithery или mcp.so для marketplace-style browsing.
 
-## Встроенный `/cost` в Claude Code против `@vk0/agent-cost-mcp`
+## Быстрая видимость (native `/cost`, ccusage) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
 
-Claude Code уже даёт полезную базовую видимость стоимости. `@vk0/agent-cost-mcp` нужен для следующего слоя анализа.
+Claude Code и ccusage уже дают полезную видимость затрат. `@vk0/agent-cost-mcp` нужен для следующего слоя: forensics, attribution и guardrails.
 
-### Когда достаточно built-in `/cost`
+### Когда использовать native `/cost` или ccusage
 
-- нужен быстрый ответ по текущей сессии
-- нужна только нативная statusline или локальная видимость трат
-- вы проверяете budget flags во время активного run
+- нужен быстрый итог текущей сессии или число в statusline
+- нужны дашборды дневного/периодного использования или burn-rate сводки
+- нужен polished human-facing monitoring UX
+- ничего настраивать не хочется
 
 ### Когда нужен `@vk0/agent-cost-mcp`
 
-- нужна per-tool аналитика через `get_tool_usage`
-- нужна attribution родитель/сабагент через `get_subagent_tree`
-- нужны локальные forward-looking оценки из `get_cost_forecast`
-- нужны agent-readable guardrails через `configure_budget`
-- нужен вывод alert-routing через webhook notifications
+- нужна per-tool доля стоимости и ROI-ранжирование через `get_tool_roi` и `get_tool_usage`
+- нужна attribution parent↔subagent по веткам через `get_subagent_tree`
+- нужно обнаружение аномалий относительно локального baseline через `detect_cost_anomalies`
+- нужны forward-looking оценки расходов из `get_cost_forecast` или `estimate_run_cost`
+- нужны agent-readable budget cap и hard-stop guardrails через `configure_budget`
+- нужны машиночитаемые next-action предложения и signed webhook alerts через `suggest_optimizations` и `set_monitor_webhook`
 
 ### Лучший вариант вместе
 
-Используйте built-ins Claude Code для быстрой видимости в ходе сессии, а `@vk0/agent-cost-mcp` подключайте, когда следующий вопрос звучит так: *какой tool это вызвал, какая ветка сожгла бюджет, что менялось во времени и что агенту делать дальше?*
+Используйте native `/cost` или ccusage для быстрой видимости; переходите к `@vk0/agent-cost-mcp`, когда следующий вопрос звучит так: *какой tool, сабагент или ветка сожгли бюджет, что будет, если run продолжится, и что агенту делать дальше?* — ответ из локального JSONL, в машиночитаемом виде.
 
-Этот пакет **не** заменяет invoices, org-wide billing systems и live runtime introspection. Это локальная MCP-поверхность для структурированного cost analysis по логам Claude Code.
+Этот пакет **не** заменяет invoices, org-wide billing systems и live runtime introspection. Это локальная MCP-поверхность для structured cost forensics и guardrails по логам Claude Code.
 
 ## Документация и how-to
 

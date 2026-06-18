@@ -24,6 +24,8 @@
 
 当 **Claude Code 已经给了你一个成本数字，但没有解释原因** 时，就该用它。
 
+**快速查看用 native `/cost` 和 ccusage** — 汇总、statusline、日常用量。当下一个问题是 *哪个 tool、subagent 或 branch 烧掉了预算，继续跑会发生什么，agent 接下来该做什么* 时，才需要 `@vk0/agent-cost-mcp` — 从本地 JSONL 以机器可读的方式给出答案。
+
 典型的 Cost Guard 场景包括：
 
 - **tool-heavy 会话：** 找出哪些工具在一次 run 或多次 run 中占据了 cost share、context share，以及 low-ROI call patterns。
@@ -148,29 +150,31 @@ Glama 目前应视为未验证，直到它稳定的 product-page URL 再次被�
 
 如果你是第一次发现这个 package，今天推荐的路径是：用 npm 安装，然后用 Smithery 或 mcp.so 做 marketplace-style browsing。
 
-## Claude Code 内建 `/cost` vs `@vk0/agent-cost-mcp`
+## 快速可视化 (native `/cost`、ccusage) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
 
-Claude Code 本身已经提供了有用的基础成本可视化。`@vk0/agent-cost-mcp` 解决的是下一层分析问题。
+Claude Code 和 ccusage 已经提供了有用的成本可视化。`@vk0/agent-cost-mcp` 解决的是下一层问题：forensics、attribution 和 guardrails。
 
-### 什么时候用内建 `/cost`
+### 什么时候用 native `/cost` 或 ccusage
 
-- 你只想快速看一下当前会话
-- 你只需要 native statusline 或 local session spend visibility
-- 你在 active run 期间检查 budget flags
+- 你只想快速看一下当前会话的合计或 statusline 数字
+- 你需要日次/周期用量 dashboard 或 burn-rate 汇总
+- 你想要 polished 的人类友好 monitoring UX
+- 不想配置任何东西
 
 ### 什么时候用 `@vk0/agent-cost-mcp`
 
-- 你要通过 `get_tool_usage` 做 per-tool analysis
-- 你需要通过 `get_subagent_tree` 做 parent/subagent attribution
-- 你想要通过 `get_cost_forecast` 做 local forward-looking estimates
-- 你需要通过 `configure_budget` 给 agent-readable guardrails
-- 你需要通过 webhook notifications 把 alerts 路由出去
+- 你要通过 `get_tool_roi` 和 `get_tool_usage` 获得 per-tool 成本占比和 ROI 排名
+- 你需要通过 `get_subagent_tree` 在各 branch 之间做 parent↔subagent 成本 attribution
+- 你想通过 `detect_cost_anomalies` 对本地 baseline 进行异常检测
+- 你需要通过 `get_cost_forecast` 或 `estimate_run_cost` 做前瞻性支出预测
+- 你想通过 `configure_budget` 设置 agent-readable 的 budget cap 和 hard-stop guardrails
+- 你需要通过 `suggest_optimizations` 和 `set_monitor_webhook` 获得机器可读的 next-action 建议和 signed webhook alerts
 
 ### 最佳方式是一起用
 
-用 Claude Code built-ins 做会话中的 quick visibility，当下一个问题变成 *到底是哪一个 tool 造成的、哪个 branch 烧掉了预算、成本随时间怎么变、agent 接下来该做什么* 时，再交给 `@vk0/agent-cost-mcp`。
+用 native `/cost` 或 ccusage 做快速可视化；当下一个问题是 *哪个 tool、subagent 或 branch 烧掉了预算、继续跑会发生什么、agent 接下来该做什么* 时，再交给 `@vk0/agent-cost-mcp` — 从本地 JSONL 以机器可读的方式给出答案。
 
-这个 package **不会** 取代 invoices、org-wide billing systems 或 live runtime introspection。它是一个面向 Claude Code 会话日志的本地 MCP surface，用来做 structured cost analysis。
+这个 package **不会** 取代 invoices、org-wide billing systems 或 live runtime introspection。它是一个本地 MCP surface，用于对 Claude Code 会话日志做 structured cost forensics 和 guardrails。
 
 ## 文档与 how-to guides
 
