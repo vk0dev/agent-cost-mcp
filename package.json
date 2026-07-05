@@ -1,7 +1,7 @@
 {
   "name": "@vk0/agent-cost-mcp",
   "version": "2.3.3",
-  "description": "Local-first Cost Guard for Claude Code — per-tool ROI, subagent-tree cost attribution, anomaly/forecast/budget guardrails, and machine-readable next actions from local JSONL session logs. Complements native /cost and ccusage; not invoices or org billing.",
+  "description": "Local-first Cost Guard for Claude Code — per-tool ROI, subagent cost attribution, anomaly/forecast/budget guardrails from local JSONL logs. Complements native /cost and ccusage.",
   "mcpName": "io.github.vk0dev/agent-cost-mcp",
   "type": "module",
   "main": "dist/index.js",
