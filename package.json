@@ -19,7 +19,9 @@
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "test": "vitest run",
     "lint": "tsc --noEmit",
-    "smoke": "npm run build && node scripts/dogfood_smoke.mjs"
+    "smoke": "npm run build && node scripts/dogfood_smoke.mjs",
+    "version-sync": "node scripts/version-sync.mjs",
+    "release-check": "node scripts/release-check.mjs"
   },
   "keywords": [
     "mcp",
