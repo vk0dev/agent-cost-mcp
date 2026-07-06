@@ -6,7 +6,7 @@ Use this page when you want the shortest path to the most common `@vk0/agent-cos
 
 - [5-minute setup with Claude Desktop](./claude-desktop-quickstart.md)
 - [Budget cap recipe: when to use 80% soft alert vs 100% hard cap](./budget-cap-recipe.md)
-- Latest shipped release note: `2.3.2` keeps aggregated daily trend and anomaly baselines tied to assistant-row timestamps, so recent days inside older multi-day JSONL logs do not disappear from the local operator view.
+- Latest shipped release note: `2.3.3` keeps aggregated daily trend and anomaly baselines tied to assistant-row timestamps, so recent days inside older multi-day JSONL logs do not disappear from the local operator view.
 
 ## Forecast workflow
 
