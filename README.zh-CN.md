@@ -24,7 +24,7 @@
 
 当 **Claude Code 已经给了你一个成本数字，但没有解释原因** 时，就该用它。
 
-**快速查看用 native `/cost` 和 ccusage** — 汇总、statusline、日常用量。当下一个问题是 *哪个 tool、subagent 或 branch 烧掉了预算，继续跑会发生什么，agent 接下来该做什么* 时，才需要 `@vk0/agent-cost-mcp` — 从本地 JSONL 以机器可读的方式给出答案。
+**快速查看用 native `/cost`、ccusage、cctally** — 汇总、statusline、日常用量、subscription-quota dashboard。当下一个问题是 *哪个 tool、subagent 或 branch 烧掉了预算，继续跑会发生什么，agent 接下来该做什么* 时，才需要 `@vk0/agent-cost-mcp` — 从本地 JSONL 以机器可读的方式给出答案。
 
 典型的 Cost Guard 场景包括：
 
@@ -363,6 +363,8 @@ Agent:  [调用 suggest_optimizations]
 | Tool | 更适合什么时候 | 替代方案更强的地方 | `@vk0/agent-cost-mcp` 更强的地方 |
 |------|--------------------|---------------------------|------------------------------------------|
 | [`ccusage`](https://github.com/ryoppippi/ccusage) | 你想要一个 polished 的 Claude Code usage / burn tracking 终端或 TUI dashboard。 | 更成熟的人类操作界面，以及更强的 operator-style monitoring UX。 | 提供 agent 可直接调用的 MCP-first access、更丰富的 per-tool/session forensics，以及在对话里直接给出 Cost Guard answers。 |
+| [`cctally`](https://github.com/omrikais/cctally) | 你想要一个针对 Claude Code Pro/Max subscription limits 的 local dashboard —— 以 ccusage-compatible 的视图提供 quota forecasts、cost-per-percent trends 和 threshold alerts。 | 更专注于 subscription-quota tracking，带有人类友好的 dashboard/TUI。 | MCP-callable，agent 可以在 session 内直接拉取 per-tool、subagent、branch attribution、anomalies 与 guardrails，而不是去看 dashboard。 |
+| [`tokmon`](https://github.com/yagil/tokmon) | 你想包装一个正在运行的程序，实时查看它的 live LLM-API token cost。 | 通过在程序运行时代理其 API 调用来实现 real-time cost monitoring。 | 在 run 结束后离线地从 Claude Code JSONL 工作，提供 per-tool/session forensics、pricing-aware math 与 MCP-callable guardrails，而不是 live API proxying。 |
 | **claude-usage** | 你只需要轻量 usage summaries 或 quick reporting，不太需要 agent-facing intervention logic。 | reporting-first framing 更简单，usage snapshots 更轻量。 | 当下一个问题是哪个 tool、branch 或 retry loop 导致 spend、agent 该不该停或改行为时更有用。 |
 | **Claude-Code-Usage-Monitor** | 你的主要目标是 monitor-style 的 usage visibility。 | 如果核心任务是被动 monitoring，而 detailed local forensics 是次要的，它更合适。 | 在 local guardrails、subagent attribution、anomaly detection 与 MCP loop 内 actionable follow-up 上更强。 |
 | [`Token Analyzer MCP`](https://github.com/proggreg/mcp-token-analyzer) | 你需要一个更通用的 MCP token-analysis utility，分析 payloads、prompts 或 message shapes。 | token-analysis framing 更广，不那么局限于 Claude Code session logs。 | 更专注于真实 Claude Code JSONL spend analysis、pricing-aware cost math 与 session-oriented Cost Guard workflows。 |
@@ -371,8 +373,8 @@ Agent:  [调用 suggest_optimizations]
 几个诚实的 caveats：
 
 - 如果你只想快速看一个 native number，那么 built-in `/cost` 或 `/usage` 仍然是最佳答案。
-- 如果你的首要目标是 reporting-first 或 monitor-first experience，`ccusage`、`claude-usage`、Claude-Code-Usage-Monitor 可能更适合。
-- 如果 burn-rate monitoring 比 local cost debugging detail 更重要，CodeBurn 可能更合适。
+- 如果你的首要目标是 reporting-first、dashboard 或 subscription-quota experience，`ccusage`、`cctally`、`claude-usage`、Claude-Code-Usage-Monitor 可能更适合。
+- 如果实时 burn-rate monitoring 或包装一个正在运行的 API 程序比 local post-run cost debugging detail 更重要，`CodeBurn` 或 `tokmon` 可能更合适。
 - `@vk0/agent-cost-mcp` 是刻意收窄范围的：本地 Claude Code JSONL logs、pricing-aware cost analysis、MCP-callable outputs，以及 agent loop 内的 guardrail-style answers。
 
 **Best fit：** 适合 solo developers 和 small teams，他们希望 agent 能回答这样的问题：*token 到底花到哪里去了、是哪个 tool 或 branch 导致的、这种模式是否危险、接下来该改什么*，同时又不想把日志发到云端，也不想打开单独的 billing dashboard。

@@ -22,7 +22,7 @@ Current v2.3.3 release surface stays local-first and centered on one operator-fa
 
 Use this when **Claude Code already gave you a cost number, but not the reason behind it**.
 
-**Use native `/cost` and ccusage for quick visibility** — totals, statusline, daily usage. Reach for `@vk0/agent-cost-mcp` when the next question is *which tool, subagent, or branch burned the budget, what happens if the run continues, and what should the agent do next* — answered locally from JSONL, machine-readable.
+**Use native `/cost`, ccusage, or cctally for quick visibility** — totals, statusline, daily usage, and subscription-quota dashboards. Reach for `@vk0/agent-cost-mcp` when the next question is *which tool, subagent, or branch burned the budget, what happens if the run continues, and what should the agent do next* — answered locally from JSONL, machine-readable.
 
 Typical Cost Guard cases:
 
@@ -387,6 +387,8 @@ These tools overlap, but they optimize for different questions. The short versio
 | Tool | Better fit when... | Where it appears stronger | Where `@vk0/agent-cost-mcp` is stronger |
 |------|--------------------|---------------------------|------------------------------------------|
 | [`ccusage`](https://github.com/ryoppippi/ccusage) | You want a polished terminal or TUI dashboard for Claude Code usage and burn tracking. | More mature human-facing dashboard experience and stronger operator-style monitoring UX. | MCP-first access for agents, richer per-tool/session forensics, and Cost Guard answers inside the conversation instead of in a separate dashboard. |
+| [`cctally`](https://github.com/omrikais/cctally) | You want a local dashboard for Claude Code Pro/Max subscription limits — quota forecasts, cost-per-percent trends, and threshold alerts in a ccusage-compatible view. | More focused on subscription-quota tracking with a human-facing dashboard/TUI. | MCP-callable so an agent can pull per-tool, subagent, and branch attribution, anomalies, and guardrails inside the session instead of reading a dashboard. |
+| [`tokmon`](https://github.com/yagil/tokmon) | You want to wrap a running program and watch its live LLM-API token cost in real time. | Real-time cost monitoring by proxying a program's API calls while it runs. | Works offline from Claude Code JSONL after the run, with per-tool/session forensics, pricing-aware math, and MCP-callable guardrails rather than live API proxying. |
 | **claude-usage** | You want lightweight usage summaries or quick reporting from Claude usage data and do not need much agent-facing intervention logic. | Simpler reporting-first framing and lighter-weight usage snapshots. | More useful when the next question is which tool, branch, or retry loop caused the spend and whether the agent should stop or adjust behavior. |
 | **Claude-Code-Usage-Monitor** | You primarily want monitor-style visibility into Claude Code usage patterns. | Better fit if passive monitoring is the job and detailed local forensics are secondary. | Stronger for local guardrails, subagent attribution, anomaly detection, and actionable follow-up inside the MCP loop. |
 | [`Token Analyzer MCP`](https://github.com/proggreg/mcp-token-analyzer) | You need a general MCP token-analysis utility across payloads, prompts, or message shapes. | Broader token-analysis framing not tied as tightly to Claude Code session logs. | More specific to real Claude Code JSONL spend analysis, pricing-aware cost math, and session-oriented Cost Guard workflows. |
@@ -395,8 +397,8 @@ These tools overlap, but they optimize for different questions. The short versio
 A few honest caveats:
 
 - Built-in `/cost` or `/usage` is still the best answer if all you want is a quick native number.
-- `ccusage`, `claude-usage`, or Claude-Code-Usage-Monitor may be the better choice if your main priority is a reporting-first or monitor-first experience rather than deeper session forensics.
-- CodeBurn may be the better fit if burn-rate monitoring matters more than local cost debugging detail.
+- `ccusage`, `cctally`, `claude-usage`, or Claude-Code-Usage-Monitor may be the better choice if your main priority is a reporting-first, dashboard, or subscription-quota experience rather than deeper session forensics.
+- `CodeBurn` or `tokmon` may be the better fit if live burn-rate monitoring or wrapping a running API program matters more than local post-run cost debugging detail.
 - `@vk0/agent-cost-mcp` is intentionally narrower: local Claude Code JSONL logs, pricing-aware cost analysis, MCP-callable outputs, and guardrail-style answers inside the agent loop.
 
 **Best fit:** solo developers and small teams who want an agent to answer “where did my tokens go, which tool or branch caused it, is this pattern risky, and what should I change next?” without sending logs to a cloud service or opening a separate billing dashboard.
