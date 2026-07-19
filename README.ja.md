@@ -150,14 +150,15 @@ Discovery surface ごとに metadata quality は多少異なる可能性があ�
 
 この package を初めて見つけたなら、現時点の preferred path は npm でインストールし、Smithery か mcp.so で marketplace-style browsing を行うことです。
 
-## クイック可視化 (native `/cost`、ccusage) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
+## クイック可視化 (native `/cost`、ccusage、cctally) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
 
-Claude Code と ccusage はすでに便利なコスト可視化を提供しています。`@vk0/agent-cost-mcp` はその次のレイヤー — forensics、attribution、guardrails — のためです。
+Claude Code、ccusage、cctally はすでに便利なコスト可視化を提供しています。`@vk0/agent-cost-mcp` はその次のレイヤー — forensics、attribution、guardrails — のためです。
 
-### native `/cost` または ccusage を使うとき
+### native `/cost`、ccusage、または cctally を使うとき
 
 - 現在のセッションの合計や statusline の数値をさっと確認したい
 - 日次・期間ごとの usage ダッシュボードや burn-rate サマリーが欲しい
+- Pro/Max subscription の quota forecast、cost-per-percent trend、threshold alert が欲しい (cctally)
 - 人間向けのポリッシュされた monitoring UX が目的
 - 何も設定したくない
 
@@ -172,7 +173,7 @@ Claude Code と ccusage はすでに便利なコスト可視化を提供して�
 
 ### 一緒に使うのが最良
 
-native `/cost` または ccusage でクイックな可視化をし、次の問いが *どの tool、subagent、branch が予算を燃やしたか、run を続けると何が起きるか、次に agent は何をすべきか* になったら `@vk0/agent-cost-mcp` を呼んでください — ローカル JSONL から機械可読な形で答えます。
+native `/cost`、ccusage、または cctally でクイックな可視化をし、次の問いが *どの tool、subagent、branch が予算を燃やしたか、run を続けると何が起きるか、次に agent は何をすべきか* になったら `@vk0/agent-cost-mcp` を呼んでください — ローカル JSONL から機械可読な形で答えます。
 
 この package は invoices、org-wide billing systems、live runtime introspection を置き換えるものではありません。Claude Code の session logs に対する structured cost forensics と guardrails 用のローカル MCP surface です。
 
@@ -365,7 +366,7 @@ Agent:  [suggest_optimizations を呼び出し]
 |------|--------------------|---------------------------|------------------------------------------|
 | [`ccusage`](https://github.com/ryoppippi/ccusage) | Claude Code usage と burn tracking の polished terminal/TUI dashboard が欲しい。 | より成熟した human-facing dashboard 体験と operator-style monitoring UX。 | agent 向け MCP-first access、より深い per-tool/session forensics、会話の中で答えが返る Cost Guard。 |
 | [`cctally`](https://github.com/omrikais/cctally) | Claude Code Pro/Max の subscription limits 向け local dashboard が欲しい — quota forecasts、cost-per-percent trends、threshold alerts を ccusage-compatible な view で。 | subscription-quota tracking により特化した human-facing dashboard/TUI。 | MCP-callable なので、agent が dashboard を読む代わりに session 内で per-tool、subagent、branch attribution、anomalies、guardrails を直接取得できる。 |
-| [`tokmon`](https://github.com/yagil/tokmon) | 実行中のプログラムをラップして、その live LLM-API token cost をリアルタイムで見たい。 | プログラムの API 呼び出しを実行中に proxy することでの real-time cost monitoring。 | run 後に Claude Code JSONL からオフラインで動作し、per-tool/session forensics、pricing-aware math、live API proxying ではなく MCP-callable guardrails を提供。 |
+| [`tokmon`](https://github.com/yagil/tokmon) | 実行中の **OpenAI `gpt-*`** プログラムをラップして、その token cost をリアルタイムで見たい — tokmon には Claude/Anthropic サポートが一切なく、Claude Code セッションを監視できない。 | プログラムの OpenAI API 呼び出しを実行中に proxy することでの real-time cost monitoring。 | Claude Code をそのまま扱え、run 後に Claude Code JSONL からオフラインで動作し、per-tool/session forensics、pricing-aware math、live API proxying ではなく MCP-callable guardrails を提供。 |
 | **claude-usage** | 軽量な usage summaries や quick reporting が欲しく、agent-facing intervention logic はあまり要らない。 | reporting-first framing がよりシンプルで usage snapshots も軽量。 | 次の問いが、どの tool、branch、retry loop が spend を起こしたか、agent は止まるべきか振る舞いを変えるべきか, のときに有用。 |
 | **Claude-Code-Usage-Monitor** | 主目的が monitor-style の usage visibility。 | passive monitoring が主で、detailed local forensics が二の次のときに向く。 | local guardrails、subagent attribution、anomaly detection、MCP loop 内の actionable follow-up に強い。 |
 | [`Token Analyzer MCP`](https://github.com/proggreg/mcp-token-analyzer) | payloads、prompts、message shapes をまたぐ一般的な MCP token-analysis utility が欲しい。 | Claude Code session logs に限定されない広い token-analysis framing。 | 実際の Claude Code JSONL spend analysis、pricing-aware cost math、session-oriented Cost Guard workflows に特化。 |
@@ -375,7 +376,7 @@ Agent:  [suggest_optimizations を呼び出し]
 
 - 速い native number だけが欲しいなら、built-in `/cost` や `/usage` が依然として最適です。
 - `ccusage`、`cctally`、`claude-usage`、Claude-Code-Usage-Monitor は reporting-first、dashboard、subscription-quota の優先度が高いときにより適しています。
-- ライブの burn-rate monitoring や実行中プログラムのラップの方が local post-run cost debugging detail より重要なら `CodeBurn` や `tokmon` の方が合う場合があります。
+- ライブの burn-rate monitoring や実行中プログラムのラップの方が local post-run cost debugging detail より重要なら `CodeBurn` や `tokmon` の方が合う場合があります。ただし `tokmon` は OpenAI の `gpt-*` モデルのみ対応で、Claude Code や Anthropic のサポートはありません。
 - `@vk0/agent-cost-mcp` は意図的に狭いスコープです。ローカル Claude Code JSONL logs、pricing-aware cost analysis、MCP-callable outputs、agent loop 内の guardrail-style answers に集中しています。
 
 **Best fit:** ログをクラウドに送らず、別 billing dashboard を開かずに、*トークンはどこに消えたか、どの tool / branch が原因か、このパターンは危険か、次に何を変えるべきか* を agent に答えさせたい solo developers や small teams。

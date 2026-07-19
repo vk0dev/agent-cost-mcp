@@ -150,14 +150,15 @@ Glama пока стоит считать непроверенным, пока н
 
 Если вы только что нашли этот пакет, сегодня preferred path такой: npm для установки и Smithery или mcp.so для marketplace-style browsing.
 
-## Быстрая видимость (native `/cost`, ccusage) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
+## Быстрая видимость (native `/cost`, ccusage, cctally) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
 
-Claude Code и ccusage уже дают полезную видимость затрат. `@vk0/agent-cost-mcp` нужен для следующего слоя: forensics, attribution и guardrails.
+Claude Code, ccusage и cctally уже дают полезную видимость затрат. `@vk0/agent-cost-mcp` нужен для следующего слоя: forensics, attribution и guardrails.
 
-### Когда использовать native `/cost` или ccusage
+### Когда использовать native `/cost`, ccusage или cctally
 
 - нужен быстрый итог текущей сессии или число в statusline
 - нужны дашборды дневного/периодного использования или burn-rate сводки
+- нужны quota forecast, cost-per-percent trends или threshold alerts для подписки Pro/Max (cctally)
 - нужен polished human-facing monitoring UX
 - ничего настраивать не хочется
 
@@ -172,7 +173,7 @@ Claude Code и ccusage уже дают полезную видимость за�
 
 ### Лучший вариант вместе
 
-Используйте native `/cost` или ccusage для быстрой видимости; переходите к `@vk0/agent-cost-mcp`, когда следующий вопрос звучит так: *какой tool, сабагент или ветка сожгли бюджет, что будет, если run продолжится, и что агенту делать дальше?* — ответ из локального JSONL, в машиночитаемом виде.
+Используйте native `/cost`, ccusage или cctally для быстрой видимости; переходите к `@vk0/agent-cost-mcp`, когда следующий вопрос звучит так: *какой tool, сабагент или ветка сожгли бюджет, что будет, если run продолжится, и что агенту делать дальше?* — ответ из локального JSONL, в машиночитаемом виде.
 
 Этот пакет **не** заменяет invoices, org-wide billing systems и live runtime introspection. Это локальная MCP-поверхность для structured cost forensics и guardrails по логам Claude Code.
 
@@ -365,7 +366,7 @@ Claude Code и ccusage уже дают полезную видимость за�
 |------|--------------------|---------------------------|------------------------------------------|
 | [`ccusage`](https://github.com/ryoppippi/ccusage) | Нужен polished terminal/TUI dashboard для Claude Code usage и burn tracking. | Более зрелый human-facing dashboard experience и более сильный operator-style monitoring UX. | MCP-first доступ для агентов, более глубокие per-tool/session forensics и Cost Guard answers прямо в разговоре, а не в отдельном dashboard. |
 | [`cctally`](https://github.com/omrikais/cctally) | Нужен local dashboard для subscription limits Claude Code Pro/Max — quota forecasts, cost-per-percent trends и threshold alerts в ccusage-compatible виде. | Более сфокусирован на subscription-quota tracking с human-facing dashboard/TUI. | MCP-callable, поэтому агент может забирать per-tool, subagent и branch attribution, anomalies и guardrails прямо внутри session, а не читать dashboard. |
-| [`tokmon`](https://github.com/yagil/tokmon) | Нужно обернуть работающую программу и наблюдать её live LLM-API token cost в реальном времени. | Real-time cost monitoring за счёт proxy API-вызовов программы во время её работы. | Работает offline из Claude Code JSONL после run, с per-tool/session forensics, pricing-aware math и MCP-callable guardrails вместо live API proxying. |
+| [`tokmon`](https://github.com/yagil/tokmon) | Нужно обернуть работающую программу на **OpenAI `gpt-*`** и наблюдать её token cost в реальном времени — у tokmon нет поддержки Claude/Anthropic, поэтому сессии Claude Code он мониторить не может вообще. | Real-time cost monitoring за счёт proxy OpenAI API-вызовов программы во время её работы. | Работает с Claude Code из коробки, offline из Claude Code JSONL после run, с per-tool/session forensics, pricing-aware math и MCP-callable guardrails вместо live API proxying. |
 | **claude-usage** | Нужны лёгкие usage summaries или быстрый reporting по usage data, без сложной agent-facing intervention logic. | Проще reporting-first framing и более лёгкие usage snapshots. | Полезнее, когда следующий вопрос, это какой tool, branch или retry loop вызвал spend и должен ли агент остановиться или изменить поведение. |
 | **Claude-Code-Usage-Monitor** | Нужен в первую очередь monitor-style обзор usage patterns. | Лучше подходит, если пассивный monitoring, это основная работа, а detailed local forensics вторичны. | Сильнее в local guardrails, subagent attribution, anomaly detection и actionable follow-up внутри MCP loop. |
 | [`Token Analyzer MCP`](https://github.com/proggreg/mcp-token-analyzer) | Нужен более общий MCP token-analysis utility для payloads, prompts или message shapes. | Более широкий token-analysis framing, не так жёстко привязанный к логам Claude Code. | Более специфичен для реального Claude Code JSONL spend analysis, pricing-aware cost math и session-oriented Cost Guard workflows. |
@@ -375,7 +376,7 @@ Claude Code и ccusage уже дают полезную видимость за�
 
 - built-in `/cost` или `/usage` всё ещё лучший ответ, если нужен просто быстрый native number
 - `ccusage`, `cctally`, `claude-usage` или Claude-Code-Usage-Monitor могут быть лучше, если ваш главный приоритет, это reporting-first, dashboard или subscription-quota experience
-- `CodeBurn` или `tokmon` может лучше подойти, если важнее живой burn-rate monitoring или обёртка работающей API-программы, чем детальная local post-run cost debugging
+- `CodeBurn` или `tokmon` может лучше подойти, если важнее живой burn-rate monitoring или обёртка работающей API-программы, чем детальная local post-run cost debugging — учтите, что `tokmon` поддерживает только модели OpenAI `gpt-*` и не имеет поддержки Claude Code или Anthropic
 - `@vk0/agent-cost-mcp` намеренно уже по scope: локальные Claude Code JSONL logs, pricing-aware cost analysis, MCP-callable outputs и guardrail-style answers внутри agent loop
 
 **Best fit:** solo developers и маленькие команды, которым нужен агент, способный ответить: «куда ушли токены, какой tool или branch это вызвали, насколько рискован текущий паттерн и что стоит поменять?» без отправки логов в облако и без отдельного billing dashboard.

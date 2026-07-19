@@ -149,14 +149,15 @@ For operator verification, check Smithery first as the canonical trusted listing
 
 If you are discovering this package for the first time, the preferred path today is npm for installation and either Smithery or mcp.so for marketplace-style browsing.
 
-## Quick visibility (native `/cost`, ccusage) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
+## Quick visibility (native `/cost`, ccusage, cctally) vs Cost Guard forensics (`@vk0/agent-cost-mcp`)
 
-Claude Code and ccusage already give you useful cost visibility. `@vk0/agent-cost-mcp` is for the next layer: forensics, attribution, and guardrails.
+Claude Code, ccusage, and cctally already give you useful cost visibility. `@vk0/agent-cost-mcp` is for the next layer: forensics, attribution, and guardrails.
 
-### Use native `/cost` or ccusage when
+### Use native `/cost`, ccusage, or cctally when
 
 - you want a quick current-session total or statusline number
 - you need daily or period usage dashboards or burn-rate summaries
+- you want Pro/Max subscription-quota forecasts, cost-per-percent trends, or threshold alerts (cctally)
 - you are looking for a polished human-facing monitoring UX
 - nothing to configure
 
@@ -171,7 +172,7 @@ Claude Code and ccusage already give you useful cost visibility. `@vk0/agent-cos
 
 ### Best together
 
-Use native `/cost` or ccusage for quick visibility; reach for `@vk0/agent-cost-mcp` when the next question is: *which tool, subagent, or branch burned the budget, what happens if the run continues, and what should the agent do next?* — answered locally from JSONL, machine-readable.
+Use native `/cost`, ccusage, or cctally for quick visibility; reach for `@vk0/agent-cost-mcp` when the next question is: *which tool, subagent, or branch burned the budget, what happens if the run continues, and what should the agent do next?* — answered locally from JSONL, machine-readable.
 
 This package does **not** replace invoices, org-wide billing systems, or live runtime introspection. It is a local MCP surface for structured cost forensics and guardrails from Claude Code session logs.
 
@@ -388,7 +389,7 @@ These tools overlap, but they optimize for different questions. The short versio
 |------|--------------------|---------------------------|------------------------------------------|
 | [`ccusage`](https://github.com/ryoppippi/ccusage) | You want a polished terminal or TUI dashboard for Claude Code usage and burn tracking. | More mature human-facing dashboard experience and stronger operator-style monitoring UX. | MCP-first access for agents, richer per-tool/session forensics, and Cost Guard answers inside the conversation instead of in a separate dashboard. |
 | [`cctally`](https://github.com/omrikais/cctally) | You want a local dashboard for Claude Code Pro/Max subscription limits — quota forecasts, cost-per-percent trends, and threshold alerts in a ccusage-compatible view. | More focused on subscription-quota tracking with a human-facing dashboard/TUI. | MCP-callable so an agent can pull per-tool, subagent, and branch attribution, anomalies, and guardrails inside the session instead of reading a dashboard. |
-| [`tokmon`](https://github.com/yagil/tokmon) | You want to wrap a running program and watch its live LLM-API token cost in real time. | Real-time cost monitoring by proxying a program's API calls while it runs. | Works offline from Claude Code JSONL after the run, with per-tool/session forensics, pricing-aware math, and MCP-callable guardrails rather than live API proxying. |
+| [`tokmon`](https://github.com/yagil/tokmon) | You want to wrap a running **OpenAI `gpt-*`** program and watch its live token cost in real time — tokmon has no Claude/Anthropic support, so it cannot monitor Claude Code sessions at all. | Real-time cost monitoring by proxying a program's OpenAI API calls while it runs. | Works with Claude Code out of the box, offline from local JSONL after the run, with per-tool/session forensics, pricing-aware math, and MCP-callable guardrails rather than live API proxying. |
 | **claude-usage** | You want lightweight usage summaries or quick reporting from Claude usage data and do not need much agent-facing intervention logic. | Simpler reporting-first framing and lighter-weight usage snapshots. | More useful when the next question is which tool, branch, or retry loop caused the spend and whether the agent should stop or adjust behavior. |
 | **Claude-Code-Usage-Monitor** | You primarily want monitor-style visibility into Claude Code usage patterns. | Better fit if passive monitoring is the job and detailed local forensics are secondary. | Stronger for local guardrails, subagent attribution, anomaly detection, and actionable follow-up inside the MCP loop. |
 | [`Token Analyzer MCP`](https://github.com/proggreg/mcp-token-analyzer) | You need a general MCP token-analysis utility across payloads, prompts, or message shapes. | Broader token-analysis framing not tied as tightly to Claude Code session logs. | More specific to real Claude Code JSONL spend analysis, pricing-aware cost math, and session-oriented Cost Guard workflows. |
@@ -398,7 +399,7 @@ A few honest caveats:
 
 - Built-in `/cost` or `/usage` is still the best answer if all you want is a quick native number.
 - `ccusage`, `cctally`, `claude-usage`, or Claude-Code-Usage-Monitor may be the better choice if your main priority is a reporting-first, dashboard, or subscription-quota experience rather than deeper session forensics.
-- `CodeBurn` or `tokmon` may be the better fit if live burn-rate monitoring or wrapping a running API program matters more than local post-run cost debugging detail.
+- `CodeBurn` or `tokmon` may be the better fit if live burn-rate monitoring or wrapping a running API program matters more than local post-run cost debugging detail — note `tokmon` only supports OpenAI `gpt-*` models and has no Claude Code or Anthropic support.
 - `@vk0/agent-cost-mcp` is intentionally narrower: local Claude Code JSONL logs, pricing-aware cost analysis, MCP-callable outputs, and guardrail-style answers inside the agent loop.
 
 **Best fit:** solo developers and small teams who want an agent to answer “where did my tokens go, which tool or branch caused it, is this pattern risky, and what should I change next?” without sending logs to a cloud service or opening a separate billing dashboard.
